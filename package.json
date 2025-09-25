@@ -1,0 +1,19 @@
+{
+  "name": "apps-e2ee",
+  "private": true,
+  "workspaces": [
+    "packages/crypto/*",
+    "packages/todo-raw-table/frontend",
+    "packages/e2ee-chat/frontend"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter @app/todo-e2ee dev",
+    "build:packages": "pnpm run --filter {./packages/crypto/**} -r build",
+    "build": "pnpm run --filter {./packages/**} -r build",
+    "test": "pnpm run --filter {./packages/**} -r test",
+    "typecheck": "pnpm run --filter {./packages/**} -r typecheck"
+  },
+  "devDependencies": {
+    "supabase": "^2.41.4"
+  }
+}

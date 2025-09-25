@@ -1,0 +1,45 @@
+# PowerSync Sync Rules for the E2EE Chat demo.
+#
+# Bucket layout:
+#  - user_data: per-user vault + identity tables.
+#  - membership_record: the specific membership row for the current user (keys). Each member row feeds the rest.
+#  - membership_rooms: per-membership rooms.
+#  - membership_messages: per-membership messages.
+#  - membership_keys: per-membership room keys for the current user.
+#  - membership_identity_public: identity keys for users (client trims to room peers).
+
+bucket_definitions:
+  user_data:
+    parameters: SELECT request.user_id() AS user_id
+    data:
+      - SELECT * FROM public.chat_e2ee_keys WHERE user_id = bucket.user_id
+      - SELECT * FROM public.chat_identity_private_keys WHERE user_id = bucket.user_id
+      - SELECT * FROM public.chat_identity_public_keys WHERE user_id = bucket.user_id
+
+  membership_record:
+    parameters: SELECT id, room_id, user_id FROM public.chat_room_members WHERE user_id = request.user_id()
+    data:
+      - SELECT * FROM public.chat_room_members WHERE id = bucket.id AND room_id = bucket.room_id AND user_id = bucket.user_id
+
+  membership_rooms:
+    parameters: SELECT room_id FROM public.chat_room_members WHERE user_id = request.user_id()
+    data:
+      - SELECT * FROM public.chat_rooms WHERE id = bucket.room_id
+
+  membership_messages:
+    parameters: SELECT room_id FROM public.chat_room_members WHERE user_id = request.user_id()
+    data:
+      - SELECT * FROM public.chat_messages WHERE bucket_id = bucket.room_id
+
+  membership_keys:
+    parameters: SELECT room_id, user_id FROM public.chat_room_members WHERE user_id = request.user_id()
+    data:
+      - SELECT * FROM public.chat_room_keys WHERE room_id = bucket.room_id AND user_id = bucket.user_id
+
+  membership_identity_public:
+    # PowerSync parameter queries do not support joins or subqueries, so we
+    # enumerate user_ids directly from the identity table. RLS keeps the data
+    # scoped, and the client filters peers based on membership rows.
+    parameters: SELECT user_id FROM public.chat_identity_public_keys
+    data:
+      - SELECT * FROM public.chat_identity_public_keys WHERE user_id = bucket.user_id
