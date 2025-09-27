@@ -59,12 +59,21 @@ export default function ChatLayout(props: ChatLayoutProps) {
       <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">PowerSync E2EE Chat</h1>
+            <h1 className="text-2xl font-semibold" data-testid="app-heading">
+              PowerSync E2EE Chat
+            </h1>
             <p className="text-sm text-slate-500">Vault unlocked • {mirrorsStarted ? 'Syncing data' : 'Starting sync…'}</p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500">{userId}</span>
-            <button type="button" className="btn-secondary" onClick={() => onSignOut()}>
+            <span className="text-xs text-slate-500" data-testid="user-id">
+              {userId}
+            </span>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => onSignOut()}
+              data-testid="chat-sign-out-button"
+            >
               Sign Out
             </button>
           </div>
@@ -125,21 +134,31 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom }: {
   return (
     <section className="col-span-12 md:col-span-4 lg:col-span-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-        <h2 className="text-lg font-semibold mb-2">Rooms</h2>
+        <h2 className="text-lg font-semibold mb-2" data-testid="rooms-heading">
+          Rooms
+        </h2>
         <div className="flex flex-col gap-2">
           <input
             className="input-sm"
             placeholder="Room name"
             value={name}
             onChange={(ev) => setName(ev.target.value)}
+            data-testid="room-name-input"
           />
           <input
             className="input-sm"
             placeholder="Topic (optional)"
             value={topic}
             onChange={(ev) => setTopic(ev.target.value)}
+            data-testid="room-topic-input"
           />
-          <button type="button" className="btn-primary" disabled={creating} onClick={handleCreate}>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={creating}
+            onClick={handleCreate}
+            data-testid="create-room-button"
+          >
             {creating ? 'Creating…' : 'Create Room'}
           </button>
           {error ? <span className="text-xs text-red-600">{error}</span> : null}
@@ -158,6 +177,8 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom }: {
                     activeRoomId === room.id ? 'bg-slate-100 dark:bg-slate-800 font-medium' : ''
                   }`}
                   onClick={() => onSelectRoom(room.id)}
+                  data-testid="room-list-item"
+                  data-room-id={room.id}
                 >
                   <div className="flex justify-between items-center">
                     <span>{room.name}</span>
@@ -197,6 +218,12 @@ function ChatPanel({
   const [inviteTarget, setInviteTarget] = useState('');
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
+
+  const membersSorted = useMemo(
+    () =>
+      [...members].sort((a, b) => a.userId.localeCompare(b.userId)),
+    [members],
+  );
 
   async function handleSend() {
     if (!room) return;
@@ -245,17 +272,13 @@ function ChatPanel({
     );
   }
 
-  const membersSorted = useMemo(
-    () =>
-      [...members].sort((a, b) => a.userId.localeCompare(b.userId)),
-    [members],
-  );
-
   return (
     <section className="col-span-12 md:col-span-8 lg:col-span-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">{room.name}</h2>
+          <h2 className="text-lg font-semibold" data-testid="active-room-heading">
+            {room.name}
+          </h2>
           <p className="text-xs text-slate-500">
             {members.length} member{members.length === 1 ? '' : 's'} • Last update {formatTimestamp(room.updatedAt)}
           </p>
@@ -269,19 +292,26 @@ function ChatPanel({
 
       <div className="grid grid-cols-12 gap-4 flex-1 overflow-hidden">
         <div className="col-span-12 lg:col-span-9 flex flex-col border-r border-slate-200 dark:border-slate-800">
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4" data-testid="messages-container">
             {messages.length === 0 ? (
               <p className="text-sm text-slate-500">
                 {canSend ? 'No messages yet. Say hello!' : 'Waiting for the room key before decrypting messages…'}
               </p>
             ) : (
               messages.map((msg) => (
-                <div key={msg.id} className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3">
+                <div
+                  key={msg.id}
+                  className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-3"
+                  data-testid="chat-message"
+                  data-message-id={msg.id}
+                >
                   <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                    <span>{msg.senderId === userId ? 'You' : msg.senderId}</span>
+                    <span data-testid="message-sender">{msg.senderId === userId ? 'You' : msg.senderId}</span>
                     <span>{formatTimestamp(msg.sentAt)}</span>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                  <p className="text-sm whitespace-pre-wrap" data-testid="message-text">
+                    {msg.text}
+                  </p>
                 </div>
               ))
             )}
@@ -297,8 +327,15 @@ function ChatPanel({
                 value={messageDraft}
                 onChange={(ev) => setMessageDraft(ev.target.value)}
                 disabled={!canSend || messageSending}
+                data-testid="message-input"
               />
-              <button type="button" className="btn-primary self-end" onClick={handleSend} disabled={!canSend || messageSending}>
+              <button
+                type="button"
+                className="btn-primary self-end"
+                onClick={handleSend}
+                disabled={!canSend || messageSending}
+                data-testid="send-message-button"
+              >
                 {messageSending ? 'Sending…' : 'Send'}
               </button>
             </div>
@@ -314,8 +351,15 @@ function ChatPanel({
                 placeholder="Target user ID"
                 value={inviteTarget}
                 onChange={(ev) => setInviteTarget(ev.target.value)}
+                data-testid="invite-user-input"
               />
-              <button type="button" className="btn-secondary" disabled={inviting} onClick={handleInvite}>
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={inviting}
+                onClick={handleInvite}
+                data-testid="invite-user-button"
+              >
                 {inviting ? 'Inviting…' : 'Invite'}
               </button>
               {inviteError ? <span className="text-xs text-red-600">{inviteError}</span> : null}

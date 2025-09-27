@@ -17,6 +17,9 @@ import {
 } from './utils/supabase';
 import { ensureVaultKey } from './utils/keyring';
 import { CHAT_MESSAGES_PAIR, CHAT_ROOMS_PAIR } from './encrypted/chatPairs';
+
+const ROOMS_MIRROR_TABLE = CHAT_ROOMS_PAIR.mirrorTable;
+const MESSAGES_MIRROR_TABLE = CHAT_MESSAGES_PAIR.mirrorTable;
 import { startChatMirrors } from './encrypted/chatMirrors';
 import { ensureIdentityKeyPair, loadPeerPublicKey, type IdentityKeyPair } from './crypto/identity';
 import { wrapRoomKey, unwrapRoomKey } from './crypto/roomKeys';
@@ -74,6 +77,7 @@ type RoomPlain = {
 
 type MessagePlain = {
   id: string;
+  roomId: string;
   senderId: string;
   text: string;
   sentAt: string;
@@ -109,6 +113,8 @@ export default function App() {
   const [dataCrypto, setDataCrypto] = useState<CryptoProvider | null>(null);
   const [identity, setIdentity] = useState<IdentityKeyPair | null>(null);
   const [roomKeys, setRoomKeys] = useState<Map<string, Uint8Array>>(new Map());
+  const [optimisticRooms, setOptimisticRooms] = useState<RoomPlain[]>([]);
+  const [optimisticMessages, setOptimisticMessages] = useState<MessagePlain[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [mirrorsStarted, setMirrorsStarted] = useState(false);
   const [guestSupported, setGuestSupported] = useState(() => isAnonymousSupported());
@@ -132,6 +138,8 @@ export default function App() {
     if (!dataCrypto) {
       setIdentity(null);
       setRoomKeys(new Map());
+      setOptimisticRooms([]);
+      setOptimisticMessages([]);
     }
   }, [dataCrypto]);
 
@@ -242,11 +250,13 @@ export default function App() {
   }, [roomKeyRows, identity, db, userId]);
 
   const { data: roomsData } = useQuery(
-    'SELECT * FROM chat_rooms_plain ORDER BY updated_at DESC',
+    `SELECT * FROM ${ROOMS_MIRROR_TABLE} ORDER BY updated_at DESC`,
     [],
     { throttleMs: 200 },
   );
-  const rooms: RoomPlain[] = useMemo(() => {
+
+  console.log('roomsData', {roomsData});
+  const remoteRooms: RoomPlain[] = useMemo(() => {
     if (!Array.isArray(roomsData)) return [];
     return (roomsData as any[]).map((row) => ({
       id: String(row.id),
@@ -255,6 +265,24 @@ export default function App() {
       updatedAt: String(row.updated_at ?? new Date().toISOString()),
     }));
   }, [roomsData]);
+
+  useEffect(() => {
+    if (!remoteRooms.length) return;
+    const remoteIds = new Set(remoteRooms.map((room) => room.id));
+    setOptimisticRooms((prev) => prev.filter((room) => !remoteIds.has(room.id)));
+  }, [remoteRooms]);
+
+  const rooms: RoomPlain[] = useMemo(() => {
+    if (!remoteRooms.length && !optimisticRooms.length) return [];
+    const remoteIds = new Set(remoteRooms.map((room) => room.id));
+    const merged = [...remoteRooms];
+    for (const room of optimisticRooms) {
+      if (!remoteIds.has(room.id)) {
+        merged.push(room);
+      }
+    }
+    return merged.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [remoteRooms, optimisticRooms]);
 
   useEffect(() => {
     if (!rooms.length) {
@@ -267,19 +295,34 @@ export default function App() {
   }, [rooms, activeRoomId]);
 
   const { data: messagesData } = useQuery(
-    'SELECT * FROM chat_messages_plain WHERE room_id = ? ORDER BY sent_at ASC',
+    `SELECT * FROM ${MESSAGES_MIRROR_TABLE} WHERE room_id = ? ORDER BY sent_at ASC`,
     [activeRoomId ?? ''],
     { throttleMs: 120 },
   );
-  const messages: MessagePlain[] = useMemo(() => {
+  const remoteMessages: MessagePlain[] = useMemo(() => {
     if (!Array.isArray(messagesData)) return [];
     return (messagesData as any[]).map((row) => ({
       id: String(row.id),
+      roomId: String(row.room_id ?? activeRoomId ?? ''),
       senderId: String(row.sender_id ?? row.user_id ?? ''),
       text: String(row.text ?? ''),
       sentAt: String(row.sent_at ?? row.updated_at ?? new Date().toISOString()),
     }));
-  }, [messagesData]);
+  }, [messagesData, activeRoomId]);
+
+  useEffect(() => {
+    if (!remoteMessages.length) return;
+    const remoteIds = new Set(remoteMessages.map((msg) => msg.id));
+    setOptimisticMessages((prev) => prev.filter((msg) => !remoteIds.has(msg.id)));
+  }, [remoteMessages]);
+
+  const messages: MessagePlain[] = useMemo(() => {
+    const activeId = activeRoomId ?? '';
+    const remoteIds = new Set(remoteMessages.map((msg) => msg.id));
+    const extras = optimisticMessages.filter((msg) => msg.roomId === activeId && !remoteIds.has(msg.id));
+    const merged = [...remoteMessages, ...extras];
+    return merged.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+  }, [remoteMessages, optimisticMessages, activeRoomId]);
 
   const { data: membershipData } = useQuery(
     'SELECT * FROM chat_room_members WHERE room_id = ? ORDER BY joined_at ASC',
@@ -328,6 +371,8 @@ export default function App() {
     setDataCrypto(null);
     setIdentity(null);
     setRoomKeys(new Map());
+    setOptimisticRooms([]);
+    setOptimisticMessages([]);
     setActiveRoomId(null);
   };
 
@@ -355,9 +400,31 @@ export default function App() {
 
   const handleCreateRoom = async (name: string, topic: string) => {
     if (!userId || !identity) throw new Error('Vault not ready yet.');
+    const id = crypto.randomUUID();
+    const roomKey = await generateDEK();
+    const teardownProvisionalKey = () => {
+      setRoomKeys((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+    };
+    const nowIso = new Date().toISOString();
+
+    setRoomKeys((prev) => {
+      const next = new Map(prev);
+      next.set(id, roomKey);
+      return next;
+    });
+
+    setOptimisticRooms((prev) => {
+      const next = prev.filter((room) => room.id !== id);
+      next.unshift({ id, name, topic: topic ? topic : null, updatedAt: nowIso });
+      return next;
+    });
+
     try {
-      const id = crypto.randomUUID();
-      const roomKey = await generateDEK();
       const roomCrypto = createDEKCrypto(roomKey);
       await insertEncrypted({ db, userId, crypto: roomCrypto }, CHAT_ROOMS_PAIR, {
         id,
@@ -366,15 +433,16 @@ export default function App() {
       });
       await db.execute(
         'INSERT INTO chat_room_members (id, room_id, user_id, invited_by, role, joined_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [memberIdFor(id, userId), id, userId, userId, 'owner', new Date().toISOString()],
+        [memberIdFor(id, userId), id, userId, userId, 'owner', nowIso],
       );
       const envelope = await wrapRoomKey(roomKey, identity.secretKey, identity.publicKey, {
         roomId: id,
         senderId: userId,
         recipientId: userId,
       });
+      await db.execute('DELETE FROM chat_room_keys WHERE id = ?', [`${id}:${userId}`]);
       await db.execute(
-        'INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n         ON CONFLICT(id) DO UPDATE SET alg = excluded.alg, aad = excluded.aad, nonce_b64 = excluded.nonce_b64, cipher_b64 = excluded.cipher_b64, kdf_salt_b64 = excluded.kdf_salt_b64, created_at = excluded.created_at',
+        'INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           `${id}:${userId}`,
           id,
@@ -385,16 +453,13 @@ export default function App() {
           envelope.nB64,
           envelope.cB64,
           envelope.header.kdf.saltB64 ?? '',
-          new Date().toISOString(),
+          nowIso,
         ],
       );
-      setRoomKeys((prev) => {
-        const next = new Map(prev);
-        next.set(id, roomKey);
-        return next;
-      });
       setActiveRoomId(id);
     } catch (err: any) {
+      teardownProvisionalKey();
+      setOptimisticRooms((prev) => prev.filter((room) => room.id !== id));
       throw new Error(err?.message ?? 'Failed to create room.');
     }
   };
@@ -403,15 +468,24 @@ export default function App() {
     if (!userId) throw new Error('User not authenticated.');
     const provider = roomProviders.get(roomId);
     if (!provider) throw new Error('Room key not available yet.');
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const optimistic: MessagePlain = {
+      id,
+      roomId,
+      senderId: userId,
+      text,
+      sentAt: now,
+    };
+    setOptimisticMessages((prev) => [...prev, optimistic]);
     try {
-      const id = crypto.randomUUID();
-      const now = new Date().toISOString();
       await insertEncrypted({ db, userId, crypto: provider }, CHAT_MESSAGES_PAIR, {
         id,
         bucketId: roomId,
         object: { text, sentAt: now, senderId: userId },
       });
     } catch (err: any) {
+      setOptimisticMessages((prev) => prev.filter((msg) => msg.id !== id));
       throw new Error(err?.message ?? 'Could not send message.');
     }
   };
@@ -430,12 +504,14 @@ export default function App() {
     });
     const now = new Date().toISOString();
     await db.writeTransaction(async (tx) => {
+      await tx.execute('DELETE FROM chat_room_members WHERE id = ?', [memberIdFor(roomId, targetUserId)]);
       await tx.execute(
-        `INSERT INTO chat_room_members (id, room_id, user_id, invited_by, role, joined_at) VALUES (?, ?, ?, ?, ?, ?)\n         ON CONFLICT(id) DO UPDATE SET invited_by = excluded.invited_by, role = excluded.role, joined_at = excluded.joined_at`,
+        'INSERT INTO chat_room_members (id, room_id, user_id, invited_by, role, joined_at) VALUES (?, ?, ?, ?, ?, ?)',
         [memberIdFor(roomId, targetUserId), roomId, targetUserId, userId, 'member', now],
       );
+      await tx.execute('DELETE FROM chat_room_keys WHERE id = ?', [`${roomId}:${targetUserId}`]);
       await tx.execute(
-        `INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n         ON CONFLICT(id) DO UPDATE SET alg = excluded.alg, aad = excluded.aad, nonce_b64 = excluded.nonce_b64, cipher_b64 = excluded.cipher_b64, kdf_salt_b64 = excluded.kdf_salt_b64, created_at = excluded.created_at`,
+        'INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           `${roomId}:${targetUserId}`,
           roomId,

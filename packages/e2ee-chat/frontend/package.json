@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "migrate": "bash -lc 'set -euo pipefail; INF=../infra; MIG=\"$INF/supabase/migrations\"; mkdir -p \"$MIG\"; TS=$(date +%Y%m%d%H%M%S); cp \"$INF/schema.sql\" \"$MIG/${TS}_init.sql\"; cd \"$INF\"; supabase db push'",
+    "migrate": "bash -lc 'set -euo pipefail; INF=../infra; MIG=\"$INF/supabase/migrations\"; mkdir -p \"$MIG\"; TS=$(date +%Y%m%d%H%M%S); cp \"$INF/schema.sql\" \"$MIG/${TS}_init.sql\"; cd \"$INF\"; pnpx supabase db push'",
     "migrate:reset": "bash -lc 'set -euo pipefail; INF=../infra; MIG=\"$INF/supabase/migrations\"; rm -rf \"$MIG\"; mkdir -p \"$MIG\"; TS=$(date +%Y%m%d%H%M%S); cp \"$INF/schema.sql\" \"$MIG/${TS}_init.sql\"; cd \"$INF\"; supabase db push'",
     "supabase:init": "cd ../infra && pnpx supabase init",
     "supabase:link": "cd ../infra && pnpx supabase link",
@@ -19,7 +19,8 @@
     "supabase:reset": "cd ../infra && pnpx supabase db reset",
     "supabase:db:pull": "cd ../infra && pnpx supabase db pull",
     "supabase:db:push": "cd ../infra && pnpx supabase db push",
-    "fmt": "prettier --write ."
+    "fmt": "prettier --write .",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@crypto/sqlite": "workspace:*",
@@ -52,6 +53,8 @@
     "vite": "7.1.5",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.4.1",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "@playwright/test": "^1.50.0",
+    "dotenv": "^16.4.7"
   }
 }

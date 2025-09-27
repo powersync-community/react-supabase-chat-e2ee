@@ -15,6 +15,7 @@ export default defineConfig({
         exclude: [
             "node_modules",
             "**/frontend/**",
+            "***/tests/e2e/**",
             "**/*.timestamp-*.mjs", // ignore vite timestamp artifacts that confuse vitest extension
         ],
         environment: "node",

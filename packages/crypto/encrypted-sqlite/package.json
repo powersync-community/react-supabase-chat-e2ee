@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@crypto/interface": "workspace:*",
-    "libsodium-wrappers": "^0.7.13",
+    "libsodium-wrappers": "^0.7.15",
     "@powersync/web": "^1.26.2"
   },
   "devDependencies": {

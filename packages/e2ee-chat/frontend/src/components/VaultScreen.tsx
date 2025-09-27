@@ -34,10 +34,17 @@ export default function VaultScreen({ hasVault, onCreateVault, onUnlockVault, on
       <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow px-6 py-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-semibold">Unlock your chat vault</h1>
+            <h1 className="text-xl font-semibold" data-testid="vault-heading">
+              Unlock your chat vault
+            </h1>
             <p className="text-sm text-slate-500">Your passphrase never leaves the device.</p>
           </div>
-          <button type="button" className="btn-secondary" onClick={() => onSignOut()}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => onSignOut()}
+            data-testid="vault-sign-out-button"
+          >
             Sign Out
           </button>
         </div>
@@ -55,8 +62,9 @@ export default function VaultScreen({ hasVault, onCreateVault, onUnlockVault, on
             type="password"
             value={passphrase}
             onChange={(ev) => setPassphrase(ev.target.value)}
+            data-testid="vault-passphrase-input"
           />
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="btn-primary" disabled={loading} data-testid="vault-submit-button">
             {loading ? (hasVault ? 'Unlocking…' : 'Creating…') : hasVault ? 'Unlock Vault' : 'Create Vault'}
           </button>
         </form>

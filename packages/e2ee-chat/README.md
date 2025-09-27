@@ -39,6 +39,14 @@ Run the frontend at the printed URL once the dev server starts.
 
 Run the provided Supabase scripts (see `package.json` scripts) to push the schema to your project. Use the PowerSync dashboard to paste the sync rules.
 
+After editing `infra/schema.sql`, generate and push a fresh migration:
+
+```sh
+pnpm --filter @app/chat-e2ee migrate
+```
+
+This snapshots the current schema into `infra/supabase/migrations/<timestamp>_init.sql` and runs `supabase db push` so the remote project picks up the change. If you only need to reapply the existing migrations without creating a new file, use `pnpm --filter @app/chat-e2ee supabase:db:push`.
+
 ## Frontend structure
 
 ```

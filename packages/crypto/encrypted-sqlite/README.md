@@ -137,12 +137,73 @@ const { data, isLoading, error } = useQuery(
 - `ensurePairsDDL(db, pairs)` — Create encrypted/mirror tables and triggers.
 - `installPairsOnSchema(schema, pairs)` — Register raw-table mappings for PowerSync.
 - `startEncryptedMirrors(runtime, pairs, opts)` — Start watchers that keep mirrors up to date; returns `stop()`.
+- `startEncryptedMirrorSubscriptions(runtime, configs, defaults)` — Advanced mirror watcher with custom queries, crypto resolvers, and comparator control.
 - `insertEncrypted(runtime, pair, args)` — Encrypt and insert a new row.
 - `updateEncrypted(runtime, pair, args)` — Encrypt and update an existing row.
 - `deleteEncrypted(runtime, pair, { id })` — Delete by id.
 - Utilities: `columnsToEnvelope(row)` and `utf8(str)`.
 
 Common types: `EncryptedPairConfig`, `EncryptedRuntime`, `MirrorColumnDef`, `MirrorBaseRow`.
+
+---
+
+## Advanced mirror subscriptions
+
+`startEncryptedMirrorSubscriptions` exposes the same resilient mirror updater that powers `startEncryptedMirrors`, but lets you plug in domain-specific SQL, throttling, and key resolution logic per encrypted pair.
+
+```ts
+import {
+  startEncryptedMirrorSubscriptions,
+  type MirrorSubscriptionConfig,
+} from '@crypto/sqlite';
+
+const configs: MirrorSubscriptionConfig[] = [
+  {
+    pair: CHAT_ROOMS_PAIR,
+    // Custom SQL can add JOINs, filters, or derived columns.
+    query: ({ runtime }) => ({
+      sql: `
+        SELECT r.*, owner.display_name
+          FROM chat_rooms r
+          JOIN chat_room_members m ON m.room_id = r.id
+          JOIN profiles owner ON owner.id = r.owner_id
+         WHERE m.user_id = ?
+         ORDER BY r.updated_at DESC
+      `,
+      parameters: [runtime.userId],
+    }),
+  },
+  {
+    pair: CHAT_MESSAGES_PAIR,
+    resolveCrypto: async ({ row }) => {
+      // Look up the room-specific DEK.
+      const provider = await roomCryptoCache.get(row.bucket_id);
+      return provider ?? null;
+    },
+    throttleMs: 100,
+  },
+];
+
+const stop = startEncryptedMirrorSubscriptions({ db, userId, crypto }, configs, {
+  throttleMs: 150, // default fallback for configs that omit throttleMs
+});
+```
+
+Each subscription config supports:
+
+- `pair` *(required)* — The `EncryptedPairConfig` you defined for the table/mirror.
+- `query` — Either a static `{ sql, parameters }` object or a factory that receives `{ pair, shape, runtime }`. Use this to project extra columns or filter by membership like the chat demo.
+- `resolveCrypto` — Given a decrypted row context, return the `CryptoProvider` that should be used. Return `undefined` to fall back to `runtime.crypto`, or `null` to skip the row (e.g., key still locked).
+- `throttleMs` — Override debounce per subscription.
+- `comparator` — Custom `keyBy` / `compareBy` functions if your query adds columns that should influence differential updates.
+
+The helper still guarantees:
+
+- Mirror upserts run inside a single write transaction per diff.
+- Rows that fail to decrypt/parse are logged and skipped without breaking the stream.
+- Disposing the returned function tears down all underlying `differentialWatch` subscriptions.
+
+Prefer this API whenever different encrypted tables require different SQL predicates or key lookup strategies—as in the chat E2EE demo where rooms sync via membership and messages unwrap per-room DEKs.
 
 ---
 

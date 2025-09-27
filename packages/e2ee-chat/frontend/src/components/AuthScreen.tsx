@@ -49,7 +49,9 @@ export default function AuthScreen({ onSignIn, onSignUp, onGuestSignIn, allowGue
   return (
     <div className="min-h-screen bg-slate-950/5 flex items-center justify-center">
       <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow px-6 py-8">
-        <h1 className="text-xl font-semibold mb-4">Sign in to chat secretly</h1>
+        <h1 className="text-xl font-semibold mb-4" data-testid="auth-heading">
+          Sign in to chat secretly
+        </h1>
         {error ? <div className="text-sm text-red-600 mb-3">{error}</div> : null}
         <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); handle(onSignIn, 'in'); }}>
           <input
@@ -91,6 +93,7 @@ export default function AuthScreen({ onSignIn, onSignUp, onGuestSignIn, allowGue
               className="btn-tertiary"
               disabled={guestLoading}
               onClick={handleGuest}
+              data-testid="guest-continue-button"
             >
               {guestLoading ? 'Joining…' : 'Continue as guest'}
             </button>

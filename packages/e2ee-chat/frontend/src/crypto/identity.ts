@@ -46,31 +46,26 @@ async function upsertPrivateRow(
   const id = PRIVATE_KEY_ID_FORMAT(userId);
   const now = new Date().toISOString();
   await db.execute(
+    'DELETE FROM chat_identity_private_keys WHERE id = ?',
+    [id],
+  );
+  await db.execute(
     `
     INSERT INTO chat_identity_private_keys (id, user_id, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      alg = excluded.alg,
-      aad = excluded.aad,
-      nonce_b64 = excluded.nonce_b64,
-      cipher_b64 = excluded.cipher_b64,
-      kdf_salt_b64 = excluded.kdf_salt_b64,
-      created_at = excluded.created_at
     `.trim(),
     [id, userId, env.alg, env.aad ?? null, env.nonce_b64, env.cipher_b64, env.kdf_salt_b64 ?? '', now],
   );
 }
 
 async function upsertPublicRow(db: AbstractPowerSyncDatabase, userId: string, publicKeyB64: string, version = 1) {
-  const now = new Date().toISOString();
   const id = `${userId}:${version}`;
+  const now = new Date().toISOString();
+  await db.execute('DELETE FROM chat_identity_public_keys WHERE id = ?', [id]);
   await db.execute(
     `
     INSERT INTO chat_identity_public_keys (id, user_id, key_version, public_key_b64, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      public_key_b64 = excluded.public_key_b64,
-      updated_at = excluded.updated_at
     `.trim(),
     [id, userId, version, publicKeyB64, now, now],
   );

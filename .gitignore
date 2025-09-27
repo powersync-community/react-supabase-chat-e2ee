@@ -26,3 +26,7 @@ coverage
 # Supabase
 **/supabase/.branches
 **/supabase/.temp
+# Playwright
+playwright-report
+test-results
+blob-report
