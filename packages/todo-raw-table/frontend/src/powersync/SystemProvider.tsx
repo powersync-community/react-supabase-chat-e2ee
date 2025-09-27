@@ -10,13 +10,14 @@ import {
   Table,
   column,
   CrudEntry,
-  UpdateType
+  UpdateType,
+  SyncClientImplementation,
 } from '@powersync/web';
 import { getAccessToken, getSupabase } from '../utils/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// NEW: bring in our pair + DDL installer
-import { ensurePairsDDL } from '@crypto/sqlite';
+// Encrypted pair registrations + DDL helpers
+import { ensurePairsDDL, installPairsOnSchema } from '@crypto/sqlite';
 import { TODOS_PAIR } from '../encrypted/todosPair';
 
 class TokenConnector extends BaseObserver<{}> implements PowerSyncBackendConnector {
@@ -42,7 +43,6 @@ class TokenConnector extends BaseObserver<{}> implements PowerSyncBackendConnect
           continue;
         }
         for (const op of tx.crud) {
-          console.log({ op });
           lastOp = op;
           const table = this.client.from(op.table);
           let result: any;
@@ -77,9 +77,8 @@ class TokenConnector extends BaseObserver<{}> implements PowerSyncBackendConnect
 
 export function SystemProvider({ children }: { children: React.ReactNode }) {
   const endpoint = import.meta.env.VITE_POWERSYNC_URL;
-  console.debug('VITE_POWERSYNC_URL =', import.meta.env.VITE_POWERSYNC_URL);
   const db = useMemo(() => {
-    // Keep PowerSync schema minimal: NO domain model columns for todos here.
+    // PowerSync raw schema definitions (opaque encrypted tables stay outside React state)
     const e2ee_keys = new Table({
       id: column.text,
       user_id: column.text,
@@ -91,7 +90,11 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
       kdf_salt_b64: column.text,
       created_at: column.text
     });
-    const schema = new Schema({ e2ee_keys });
+    const baseSchema = new Schema({ e2ee_keys });
+    const schema = installPairsOnSchema(baseSchema, [TODOS_PAIR]);
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      (window as any).__todoRawTables = schema.rawTables.map((table) => table.name);
+    }
     const powerSync = new PowerSyncDatabase({
       database: { dbFilename: 'e2ee-todo-v3.db' },
       schema,
@@ -110,7 +113,7 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
         // IMPORTANT: Create encrypted raw ("todos") + local mirror ("todos_plain")
         await ensurePairsDDL(db, [TODOS_PAIR]);
 
-        await db.connect(connector);
+        await db.connect(connector, { clientImplementation: SyncClientImplementation.RUST });
         await db.waitForReady();
       } catch (err: any) {
         const msg = err?.message ?? String(err ?? '');
@@ -123,7 +126,7 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
           try {
             await db.init();
             await ensurePairsDDL(db, [TODOS_PAIR]);
-            await db.connect(connector);
+            await db.connect(connector, { clientImplementation: SyncClientImplementation.RUST });
             await db.waitForReady();
           } catch (e2) {
             console.error('PowerSync init/connect failed after reset:', e2);

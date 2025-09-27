@@ -137,6 +137,93 @@ export function startEncryptedMirrorSubscriptions(
     const throttle = config.throttleMs ?? defaults?.throttleMs ?? 150;
     const comparator = config.comparator ?? defaultComparator(shape);
 
+    const pendingRetries = new Map<string, number>();
+    const retryTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+    const MAX_RETRIES = 120;
+    const BASE_RETRY_DELAY_MS = 500;
+
+    const isPendingRetry = (key: string, attempt: number) => {
+      const existing = pendingRetries.get(key);
+      return existing !== undefined && existing <= attempt;
+    };
+
+    const clearRetryTimers = () => {
+      for (const timeout of retryTimeouts.values()) {
+        clearTimeout(timeout);
+      }
+      retryTimeouts.clear();
+      pendingRetries.clear();
+    };
+
+    const isDecryptKeyError = (err: unknown) => {
+      return err instanceof Error && /cannot be decrypted using that key/i.test(err.message ?? '');
+    };
+
+    const processRow = async (tx: any, rawRow: RawEncryptedRow & Record<string, any>) => {
+      const normalized = normalizeRow(rawRow, shape);
+      let provider: CryptoProvider | null | undefined = runtime.crypto;
+      if (config.resolveCrypto) {
+        provider = await config.resolveCrypto({ row: normalized, pair, runtime });
+        if (provider === undefined) {
+          provider = runtime.crypto;
+        }
+      }
+
+      if (!provider) {
+        throw new Error('crypto provider unavailable');
+      }
+
+      const env = columnsToEnvelope(normalized);
+      const plain = await provider.decrypt(env, normalized.aad ?? undefined);
+      const parsed = pair.parsePlain({
+        plaintext: plain,
+        aad: normalized.aad ?? undefined,
+        encryptedRow: { ...rawRow, ...normalized },
+      });
+      const base = [
+        normalized.id,
+        normalized.user_id,
+        normalized.bucket_id ?? null,
+        normalized.updated_at,
+      ];
+      const customVals = pair.mirrorColumns.map((col) => (parsed as any)[col.name] ?? null);
+      await tx.execute(upsert.deleteSql, [normalized.id]);
+      await tx.execute(upsert.insertSql, [...base, ...customVals]);
+    };
+
+    const scheduleRetry = (rawRow: RawEncryptedRow & Record<string, any>, attempt: number) => {
+      if (attempt > MAX_RETRIES) {
+        return;
+      }
+      const normalized = normalizeRow(rawRow, shape);
+      const retryKey = `${pair.mirrorTable}:${normalized.id}`;
+
+      if (isPendingRetry(retryKey, attempt)) {
+        return;
+      }
+
+      pendingRetries.set(retryKey, attempt);
+      const delay = Math.min(BASE_RETRY_DELAY_MS * attempt, 5_000);
+      const timeout = setTimeout(async () => {
+        pendingRetries.delete(retryKey);
+        retryTimeouts.delete(retryKey);
+        try {
+          await db.writeTransaction(async (retryTx) => {
+            await processRow(retryTx, rawRow);
+          });
+        } catch (err) {
+          if (isDecryptKeyError(err) || (err instanceof Error && /crypto provider unavailable/i.test(err.message ?? ''))) {
+            scheduleRetry(rawRow, attempt + 1);
+          } else {
+            // eslint-disable-next-line no-console
+            console.warn(`[mirror ${pair.encryptedTable}→${pair.mirrorTable}] retry failed id=${normalized.id}`, err);
+          }
+        }
+      }, delay);
+
+      retryTimeouts.set(retryKey, timeout);
+    };
+
     const query = db.query<RawEncryptedRow & Record<string, any>>({ sql, parameters });
     const sub = query
       .differentialWatch({ throttleMs: throttle, rowComparator: comparator })
@@ -152,36 +239,14 @@ export function startEncryptedMirrorSubscriptions(
 
             for (const rawRow of work) {
               try {
-                const normalized = normalizeRow(rawRow, shape);
-                let provider: CryptoProvider | null | undefined = runtime.crypto;
-                if (config.resolveCrypto) {
-                  provider = await config.resolveCrypto({ row: normalized, pair, runtime });
-                  if (provider === undefined) {
-                    provider = runtime.crypto;
-                  }
-                }
-                if (!provider) {
-                  continue;
-                }
-                const env = columnsToEnvelope(normalized);
-                const plain = await provider.decrypt(env, normalized.aad ?? undefined);
-                const parsed = pair.parsePlain({
-                  plaintext: plain,
-                  aad: normalized.aad ?? undefined,
-                  encryptedRow: { ...rawRow, ...normalized },
-                });
-                const base = [
-                  normalized.id,
-                  normalized.user_id,
-                  normalized.bucket_id ?? null,
-                  normalized.updated_at,
-                ];
-                const customVals = pair.mirrorColumns.map((col) => (parsed as any)[col.name] ?? null);
-                await tx.execute(upsert.deleteSql, [normalized.id]);
-                await tx.execute(upsert.insertSql, [...base, ...customVals]);
+                await processRow(tx, rawRow);
               } catch (err) {
-                // eslint-disable-next-line no-console
-                console.warn(`[mirror ${pair.encryptedTable}→${pair.mirrorTable}] decrypt/parse failed id=${rawRow[shape.id] ?? rawRow.id}`, err);
+                if (isDecryptKeyError(err) || (err instanceof Error && /crypto provider unavailable/i.test(err.message ?? ''))) {
+                  scheduleRetry(rawRow, 1);
+                } else {
+                  // eslint-disable-next-line no-console
+                  console.warn(`[mirror ${pair.encryptedTable}→${pair.mirrorTable}] decrypt/parse failed id=${rawRow[shape.id] ?? rawRow.id}`, err);
+                }
               }
             }
 
@@ -196,7 +261,12 @@ export function startEncryptedMirrorSubscriptions(
           console.error(`[mirror ${pair.encryptedTable}→${pair.mirrorTable}] watch error:`, err);
         },
       });
-    subs.push({ close: sub });
+    subs.push({
+      close: () => {
+        clearRetryTimers();
+        sub?.();
+      },
+    });
   }
 
   return () => {

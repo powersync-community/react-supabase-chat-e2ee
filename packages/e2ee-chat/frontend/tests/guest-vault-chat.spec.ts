@@ -30,7 +30,7 @@ test('guest can create a vault and start a chat', async ({ page }) => {
   await createPassphraseInput.fill(passphrase);
   await page.getByTestId('vault-submit-button').click();
 
-  await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('rooms-heading')).toBeVisible({ timeout: 15_000 });
 
   const roomNameInput = page.getByTestId('room-name-input');
@@ -41,8 +41,11 @@ test('guest can create a vault and start a chat', async ({ page }) => {
   await topicInput.fill(roomTopic);
 
   await page.getByTestId('create-room-button').click();
+  const createdRoomTile = page.getByTestId('room-list-item').filter({ hasText: roomName });
+  await expect(createdRoomTile).toBeVisible({ timeout: 30_000 });
+  await createdRoomTile.click();
 
-  await expect(page.getByTestId('active-room-heading')).toHaveText(roomName, { timeout: 25_000 });
+  await expect(page.getByTestId('active-room-heading')).toHaveText(roomName, { timeout: 30_000 });
 
   const messageBox = page.getByTestId('message-input');
   await expect(messageBox).toBeEnabled({ timeout: 25_000 });

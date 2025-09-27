@@ -69,7 +69,8 @@ export function installPairsOnSchema(base: Schema, pairs: EncryptedPairConfig[])
       }
     };
   }
-  return base.withRawTables(mappings);
+  base.withRawTables(mappings);
+  return base;
 }
 
 /** Create encrypted & mirror tables and upload triggers */

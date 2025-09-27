@@ -9,7 +9,7 @@
 #  - membership_identity_public: identity keys for users (client trims to room peers).
 
 bucket_definitions:
-  user_data:
+  chat_user:
     parameters: SELECT request.user_id() AS user_id
     data:
       - SELECT * FROM public.chat_e2ee_keys WHERE user_id = bucket.user_id

@@ -1,4 +1,4 @@
-import type { EncryptedPairConfig } from '@crypto/sqlite';
+import type { EncryptedPairConfig, RawEncryptedRow } from '@crypto/sqlite';
 import { utf8 } from '@crypto/sqlite';
 
 type RoomPayload = {
@@ -12,6 +12,14 @@ type MessagePayload = {
   senderId?: string;
 };
 
+type MessageEncryptedRow = RawEncryptedRow & {
+  room_id?: string | null;
+  sent_at?: string | null;
+  sender_id?: string | null;
+};
+
+const textDecoder = new TextDecoder();
+
 export const CHAT_ROOMS_PAIR: EncryptedPairConfig<RoomPayload> = {
   name: 'chat_rooms',
   encryptedTable: 'chat_rooms',
@@ -22,15 +30,15 @@ export const CHAT_ROOMS_PAIR: EncryptedPairConfig<RoomPayload> = {
   ],
   aad: 'chat-room-v1',
   parsePlain: ({ plaintext }) => {
-    const json = new TextDecoder().decode(plaintext);
+    const json = textDecoder.decode(plaintext);
     try {
       const obj = JSON.parse(json) as RoomPayload;
       return {
         name: obj.name ?? 'Untitled room',
         topic: obj.topic ?? null,
-      } as any;
+      };
     } catch {
-      return { name: json || 'Untitled room', topic: null } as any;
+      return { name: json || 'Untitled room', topic: null };
     }
   },
   serializePlain: (room) => ({
@@ -51,22 +59,25 @@ export const CHAT_MESSAGES_PAIR: EncryptedPairConfig<MessagePayload> = {
   ],
   aad: 'chat-message-v1',
   parsePlain: ({ plaintext, encryptedRow }) => {
-    const raw = new TextDecoder().decode(plaintext);
+    const raw = textDecoder.decode(plaintext);
     let parsed: MessagePayload | null = null;
     try {
       parsed = JSON.parse(raw) as MessagePayload;
     } catch {
       parsed = null;
     }
-    const roomId = (encryptedRow as any).bucket_id ?? (encryptedRow as any).room_id ?? null;
-    const sentAt = parsed?.sentAt ?? (encryptedRow as any).sent_at ?? encryptedRow.updated_at;
-    const senderId = parsed?.senderId ?? (encryptedRow as any).sender_id ?? encryptedRow.user_id;
+
+    const row = encryptedRow as MessageEncryptedRow;
+    const roomId = row.bucket_id ?? row.room_id ?? null;
+    const sentAt = parsed?.sentAt ?? row.sent_at ?? row.updated_at;
+    const senderId = parsed?.senderId ?? row.sender_id ?? row.user_id;
+
     return {
       room_id: roomId,
       sender_id: senderId,
       text: parsed?.text ?? raw,
       sent_at: sentAt,
-    } as any;
+    };
   },
   serializePlain: (message) => ({
     plaintext: utf8(JSON.stringify(message)),

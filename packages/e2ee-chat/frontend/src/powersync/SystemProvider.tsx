@@ -11,10 +11,11 @@ import {
   column,
   CrudEntry,
   UpdateType,
+  SyncClientImplementation,
 } from '@powersync/web';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { ensurePairsDDL } from '@crypto/sqlite';
+import { ensurePairsDDL, installPairsOnSchema } from '@crypto/sqlite';
 import { CHAT_PAIRS } from '../encrypted/chatPairs';
 import { getAccessToken, getSupabase } from '../utils/supabase';
 
@@ -130,13 +131,19 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
       created_at: column.text,
     });
 
-    const schema = new Schema({
+    const baseSchema = new Schema({
       chat_e2ee_keys,
       chat_identity_private_keys,
       chat_identity_public_keys,
       chat_room_members,
       chat_room_keys,
     });
+
+    const schema = installPairsOnSchema(baseSchema, CHAT_PAIRS);
+
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      (window as any).__powersyncRawTables = schema.rawTables.map((table) => table.name);
+    }
 
     return new PowerSyncDatabase({
       database: { dbFilename: 'powersync-chat-e2ee.db' },
@@ -155,7 +162,7 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         await ensurePairsDDL(db, CHAT_PAIRS);
         if (cancelled) return;
-        await db.connect(connector);
+        await db.connect(connector, { clientImplementation: SyncClientImplementation.RUST });
         if (cancelled) return;
         await db.waitForReady();
       } catch (err: any) {
@@ -173,7 +180,7 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
             if (cancelled) return;
             await ensurePairsDDL(db, CHAT_PAIRS);
             if (cancelled) return;
-            await db.connect(connector);
+            await db.connect(connector, { clientImplementation: SyncClientImplementation.RUST });
             if (cancelled) return;
             await db.waitForReady();
           } catch (retryErr) {

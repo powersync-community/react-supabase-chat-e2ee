@@ -113,7 +113,6 @@ create policy "Members view membership"
   on public.chat_room_members for select
   using (
     auth.uid() = user_id
-    or auth.uid() = invited_by
     or exists (
       select 1
         from public.chat_room_keys k

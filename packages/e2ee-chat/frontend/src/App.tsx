@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePowerSync, useQuery } from '@powersync/react';
 import { createPasswordCrypto } from '@crypto/password';
-import { createDEKCrypto, insertEncrypted, generateDEK } from '@crypto/sqlite';
+import { createDEKCrypto, insertEncrypted, updateEncrypted, generateDEK } from '@crypto/sqlite';
 import type { CryptoProvider } from '@crypto/interface';
 import AuthScreen from './components/AuthScreen';
 import VaultScreen from './components/VaultScreen';
@@ -110,10 +110,14 @@ export default function App() {
   const userId = useSupabaseUser();
   const providers = useVaultProviders(userId);
 
+  if (typeof window !== 'undefined' && import.meta.env.MODE !== 'production') {
+    (window as any).__powersyncDb = db;
+    (window as any).__powersyncUserId = userId;
+  }
+
   const [dataCrypto, setDataCrypto] = useState<CryptoProvider | null>(null);
   const [identity, setIdentity] = useState<IdentityKeyPair | null>(null);
   const [roomKeys, setRoomKeys] = useState<Map<string, Uint8Array>>(new Map());
-  const [optimisticRooms, setOptimisticRooms] = useState<RoomPlain[]>([]);
   const [optimisticMessages, setOptimisticMessages] = useState<MessagePlain[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [mirrorsStarted, setMirrorsStarted] = useState(false);
@@ -138,7 +142,6 @@ export default function App() {
     if (!dataCrypto) {
       setIdentity(null);
       setRoomKeys(new Map());
-      setOptimisticRooms([]);
       setOptimisticMessages([]);
     }
   }, [dataCrypto]);
@@ -249,16 +252,26 @@ export default function App() {
     };
   }, [roomKeyRows, identity, db, userId]);
 
-  const { data: roomsData } = useQuery(
-    `SELECT * FROM ${ROOMS_MIRROR_TABLE} ORDER BY updated_at DESC`,
-    [],
-    { throttleMs: 200 },
-  );
+  const roomsSql = dbReady
+    ? `SELECT * FROM ${ROOMS_MIRROR_TABLE} ORDER BY updated_at DESC`
+    : 'SELECT NULL as id WHERE 1 = 0';
 
-  console.log('roomsData', {roomsData});
+  const roomsQuery = useQuery(roomsSql, [], { throttleMs: 200 });
+
+  const roomsData = useMemo(() => {
+    if (roomsQuery?.error) {
+      if (/no such table/i.test(roomsQuery.error.message ?? '')) {
+        return [];
+      }
+      // eslint-disable-next-line no-console
+      console.warn('rooms query error', roomsQuery.error);
+    }
+    return Array.isArray(roomsQuery?.data) ? roomsQuery.data : [];
+  }, [roomsQuery?.data, roomsQuery?.error]);
+
   const remoteRooms: RoomPlain[] = useMemo(() => {
     if (!Array.isArray(roomsData)) return [];
-    return (roomsData as any[]).map((row) => ({
+    return roomsData.map((row: any) => ({
       id: String(row.id),
       name: (row.name as string) ?? 'Untitled room',
       topic: (row.topic as string | null) ?? null,
@@ -266,33 +279,24 @@ export default function App() {
     }));
   }, [roomsData]);
 
-  useEffect(() => {
-    if (!remoteRooms.length) return;
-    const remoteIds = new Set(remoteRooms.map((room) => room.id));
-    setOptimisticRooms((prev) => prev.filter((room) => !remoteIds.has(room.id)));
-  }, [remoteRooms]);
-
   const rooms: RoomPlain[] = useMemo(() => {
-    if (!remoteRooms.length && !optimisticRooms.length) return [];
-    const remoteIds = new Set(remoteRooms.map((room) => room.id));
-    const merged = [...remoteRooms];
-    for (const room of optimisticRooms) {
-      if (!remoteIds.has(room.id)) {
-        merged.push(room);
-      }
-    }
-    return merged.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [remoteRooms, optimisticRooms]);
+    return [...remoteRooms].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [remoteRooms]);
 
   useEffect(() => {
     if (!rooms.length) {
-      setActiveRoomId(null);
+      if (activeRoomId && roomKeys.has(activeRoomId)) {
+        return;
+      }
+      if (activeRoomId !== null) {
+        setActiveRoomId(null);
+      }
       return;
     }
-    if (!activeRoomId) {
+    if (!activeRoomId || !rooms.some((room) => room.id === activeRoomId)) {
       setActiveRoomId(rooms[0].id);
     }
-  }, [rooms, activeRoomId]);
+  }, [rooms, activeRoomId, roomKeys]);
 
   const { data: messagesData } = useQuery(
     `SELECT * FROM ${MESSAGES_MIRROR_TABLE} WHERE room_id = ? ORDER BY sent_at ASC`,
@@ -371,7 +375,6 @@ export default function App() {
     setDataCrypto(null);
     setIdentity(null);
     setRoomKeys(new Map());
-    setOptimisticRooms([]);
     setOptimisticMessages([]);
     setActiveRoomId(null);
   };
@@ -418,12 +421,6 @@ export default function App() {
       return next;
     });
 
-    setOptimisticRooms((prev) => {
-      const next = prev.filter((room) => room.id !== id);
-      next.unshift({ id, name, topic: topic ? topic : null, updatedAt: nowIso });
-      return next;
-    });
-
     try {
       const roomCrypto = createDEKCrypto(roomKey);
       await insertEncrypted({ db, userId, crypto: roomCrypto }, CHAT_ROOMS_PAIR, {
@@ -459,7 +456,6 @@ export default function App() {
       setActiveRoomId(id);
     } catch (err: any) {
       teardownProvisionalKey();
-      setOptimisticRooms((prev) => prev.filter((room) => room.id !== id));
       throw new Error(err?.message ?? 'Failed to create room.');
     }
   };
@@ -495,6 +491,7 @@ export default function App() {
     if (targetUserId === userId) throw new Error('You are already in this room.');
     const roomKey = roomKeys.get(roomId);
     if (!roomKey) throw new Error('Room key not available yet.');
+    const existingRoom = rooms.find((room) => room.id === roomId);
     const peerPublic = await loadPeerPublicKey(db, targetUserId);
     if (!peerPublic) throw new Error('Target user has not published an identity key.');
     const envelope = await wrapRoomKey(roomKey, identity.secretKey, peerPublic, {
@@ -526,6 +523,21 @@ export default function App() {
         ],
       );
     });
+
+    if (existingRoom) {
+      const roomProvider = roomProviders.get(roomId);
+      if (roomProvider) {
+        try {
+          await updateEncrypted({ db, userId, crypto: roomProvider }, CHAT_ROOMS_PAIR, {
+            id: roomId,
+            bucketId: roomId,
+            object: { name: existingRoom.name, topic: existingRoom.topic ?? undefined },
+          });
+        } catch (err) {
+          console.warn('Failed to bump room metadata after inviting user', err);
+        }
+      }
+    }
   };
 
   if (!userId) {

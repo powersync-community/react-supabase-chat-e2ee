@@ -48,7 +48,7 @@ test('guest reconnecting with same passphrase sees existing room', async ({ page
   await expect(page.getByTestId('vault-heading')).toBeVisible({ timeout: 20_000 });
   await page.getByTestId('vault-passphrase-input').fill(passphrase);
   await page.getByTestId('vault-submit-button').click();
-  await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 30_000 });
 
   const initialUserId = (await page.getByTestId('user-id').textContent())?.trim();
   if (!initialUserId) {
@@ -72,12 +72,12 @@ test('guest reconnecting with same passphrase sees existing room', async ({ page
   await expect(page.getByTestId('vault-heading')).toBeVisible({ timeout: 20_000 });
   await page.getByTestId('vault-passphrase-input').fill(passphrase);
   await page.getByTestId('vault-submit-button').click();
-  await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 30_000 });
 
   const postReloadUserId = (await page.getByTestId('user-id').textContent())?.trim();
   await expect(postReloadUserId).toBe(initialUserId);
 
-  await expect(page.getByTestId('room-list-item').filter({ hasText: roomName })).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByTestId('room-list-item').filter({ hasText: roomName })).toBeVisible({ timeout: 30_000 });
   const roomTile = page.getByTestId('room-list-item').filter({ hasText: roomName });
   await roomTile.click();
   await expect(page.getByTestId('active-room-heading')).toHaveText(roomName, { timeout: 30_000 });
