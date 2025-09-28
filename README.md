@@ -5,6 +5,9 @@ This repo contains demo applications and shared libraries for building end-to-en
 ## Applications
 
 - [packages/e2ee-chat](packages/e2ee-chat) — End-to-end encrypted group chat with guest access, room invites, and local vault unlock flows. See the package README for setup instructions and an in-depth encryption/privacy overview.
+
+![Screenshot of E2EE Chat](packages/e2ee-chat/frontend/screenshot.png)
+
 - [packages/todo-raw-table](packages/todo-raw-table) — Todo list app showcasing encrypted raw-table storage paired with decrypted mirrors for UI queries.
 
 ![Screenshot of Todo (raw-table + encrypted mirrors)](packages/todo-raw-table/frontend/screenshot.png)
