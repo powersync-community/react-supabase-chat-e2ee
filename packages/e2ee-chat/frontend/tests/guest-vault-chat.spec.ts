@@ -72,10 +72,19 @@ test("guest can create a vault and start a chat", async ({ page }) => {
     .getByTestId("message-text")
     .filter({ hasText: messageText });
   await expect(sentMessage).toBeVisible({ timeout: 25_000 });
-  const sentByYou = page
-    .getByTestId("message-sender")
-    .filter({ hasText: "You" });
-  await expect(sentByYou).toBeVisible({ timeout: 10_000 });
+
+  await page.getByTestId("user-menu-button").click();
+  const userIdLabel = (await page.getByTestId("user-id").textContent())?.trim();
+  await page.getByTestId("user-menu-button").click();// close menu
+  if (!userIdLabel) {
+    throw new Error('Failed to read user ID from menu.');
+  }
+
+  const latestMessage = page.getByTestId("chat-message").last();
+  await latestMessage.getByTestId("message-avatar").click();
+  const idToast = page.getByTestId("avatar-id-toast");
+  await expect(idToast).toBeVisible({ timeout: 5_000 });
+  await expect(idToast).toContainText(userIdLabel);
 
   await page.getByTestId("user-menu-button").click();
   const signOutButton = page.getByTestId("chat-sign-out-button");

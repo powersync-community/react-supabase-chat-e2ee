@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bars3Icon,
   PaperAirplaneIcon,
@@ -72,6 +72,7 @@ export default function ChatLayout(props: ChatLayoutProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const copyResetTimer = useRef<number | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
+  const userMenuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     return () => {
@@ -86,6 +87,9 @@ export default function ChatLayout(props: ChatLayoutProps) {
     const handler = (event: MouseEvent) => {
       if (!userMenuRef.current) return;
       if (userMenuRef.current.contains(event.target as Node)) return;
+      // if the button itself was clicked, don't close
+      if (userMenuButtonRef.current?.contains(event.target as Node)) return;
+
       setShowUserMenu(false);
     };
     document.addEventListener("mousedown", handler);
@@ -148,6 +152,7 @@ export default function ChatLayout(props: ChatLayoutProps) {
             <div className="relative">
               <button
                 type="button"
+                ref={userMenuButtonRef}
                 className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 px-3 py-2 shadow-sm"
                 onClick={() => setShowUserMenu((prev) => !prev)}
                 data-testid="user-menu-button"
@@ -522,6 +527,7 @@ function ChatPanel({
   const [showInvite, setShowInvite] = useState(true);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [showMemberPopover, setShowMemberPopover] = useState(false);
+  const [visibleUserId, setVisibleUserId] = useState<string | null>(null);
 
   const inviteInputRef = useRef<HTMLInputElement | null>(null);
   const memberPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -550,6 +556,12 @@ function ChatPanel({
   }, [showInvite]);
 
   useEffect(() => {
+    if (!visibleUserId) return;
+    const timer = setTimeout(() => setVisibleUserId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [visibleUserId]);
+
+  useEffect(() => {
     if (!showMemberPopover) return;
     const handler = (event: MouseEvent) => {
       const popover = memberPopoverRef.current;
@@ -563,6 +575,13 @@ function ChatPanel({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showMemberPopover]);
+
+  const handleAvatarClick = (id: string) => {
+    setVisibleUserId(id);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(id).catch(() => {});
+    }
+  };
 
   async function handleSend() {
     if (!room) return;
@@ -780,39 +799,90 @@ function ChatPanel({
           ) : (
             messages.map((msg) => {
               const isOwn = msg.senderId === userId;
+              const timestamp = formatTimestamp(msg.sentAt);
               return (
                 <div
                   key={msg.id}
-                  className={`flex items-end gap-3 ${isOwn ? "justify-end" : "justify-start"}`}
+                  className={`flex items-end gap-4 ${isOwn ? 'justify-end' : 'justify-start'}`}
                   data-testid="chat-message"
                   data-message-id={msg.id}
                 >
-                  {!isOwn ? <Avatar userId={msg.senderId} size={32} /> : null}
-                  <div
-                    className={`max-w-full sm:max-w-[80%] rounded-2xl border px-4 py-3 shadow-sm transition ${
-                      isOwn
-                        ? "border-blue-500/60 bg-gradient-to-br from-blue-600 to-indigo-500 text-white"
-                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 text-slate-900 dark:text-slate-100"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3 text-[11px] mb-1 opacity-80">
-                      <span data-testid="message-sender">
-                        {isOwn ? "You" : msg.senderId}
-                      </span>
-                      <span>{formatTimestamp(msg.sentAt)}</span>
-                    </div>
-                    <p
-                      className="text-sm whitespace-pre-wrap leading-relaxed"
-                      data-testid="message-text"
+                  {!isOwn ? (
+                    <button
+                      type="button"
+                      className="self-start mt-1 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition"
+                      onClick={() => handleAvatarClick(msg.senderId)}
+                      data-testid="message-avatar"
+                      aria-label="Show member ID"
                     >
-                      {msg.text}
-                    </p>
+                      <Avatar userId={msg.senderId} size={32} />
+                    </button>
+                  ) : null}
+                  <div className={`max-w-full sm:max-w-[80%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+                    <div
+                      className={`relative rounded-2xl px-4 py-3 shadow-sm transition border ${
+                        isOwn
+                          ? 'border-blue-500/60 bg-gradient-to-br from-blue-600 to-indigo-500 text-white'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 text-slate-900 dark:text-slate-100'
+                      }`}
+                    >
+                      {!isOwn ? (
+                        <span
+                          className="pointer-events-none absolute -left-[7px] bg-white dark:bg-slate-900/70 border-l-1 border-b-1 border-slate-200 dark:border-slate-800/70 top-4 h-3 w-3 rotate-45 "
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <span
+                          className="pointer-events-none absolute -right-[7px] top-4 h-3 w-3 rotate-45 bg-gradient-to-br from-blue-600 to-indigo-500 border-r-1 border-t-1 border-blue-500/60"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed" data-testid="message-text">
+                        {msg.text}
+                      </p>
+                      <span
+                        className={`mt-2 block text-[10px] text-right uppercase tracking-wide ${
+                          isOwn ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {timestamp}
+                      </span>
+                    </div>
                   </div>
-                  {isOwn ? <Avatar userId={msg.senderId} size={32} /> : null}
+                  {isOwn ? (
+                    <button
+                      type="button"
+                      className="self-start mt-1 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 transition"
+                      onClick={() => handleAvatarClick(msg.senderId)}
+                      data-testid="message-avatar"
+                      aria-label="Show member ID"
+                    >
+                      <Avatar userId={msg.senderId} size={32} />
+                    </button>
+                  ) : null}
                 </div>
               );
             })
           )}
+          {visibleUserId ? (
+            <div className="flex justify-center">
+              <div
+                className="mt-4 inline-flex items-center gap-2 rounded-full bg-slate-900/80 text-white text-xs px-3 py-1 shadow-lg backdrop-blur-sm"
+                data-testid="avatar-id-toast"
+              >
+                <span className="uppercase tracking-wide text-[10px] text-white/60">Member ID</span>
+                <span className="font-mono text-[11px]">{visibleUserId}</span>
+                <button
+                  type="button"
+                  className="ml-1 text-white/60 hover:text-white transition"
+                  onClick={() => setVisibleUserId(null)}
+                  aria-label="Dismiss member id"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ) : null}
           {messageError ? (
             <div className="text-xs text-red-600 bg-red-50/80 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
               {messageError}
