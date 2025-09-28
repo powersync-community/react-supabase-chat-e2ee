@@ -7,7 +7,7 @@
     "dev": "vite --port 5181",
     "build": "tsc -p tsconfig.json && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "migrate": "bash -lc 'set -euo pipefail; INF=../infra; MIG=\"$INF/supabase/migrations\"; mkdir -p \"$MIG\"; TS=$(date +%Y%m%d%H%M%S); cp \"$INF/schema.sql\" \"$MIG/${TS}_init.sql\"; cd \"$INF\"; supabase db push'",
     "migrate:reset": "bash -lc 'set -euo pipefail; INF=../infra; MIG=\"$INF/supabase/migrations\"; rm -rf \"$MIG\"; mkdir -p \"$MIG\"; TS=$(date +%Y%m%d%H%M%S); cp \"$INF/schema.sql\" \"$MIG/${TS}_init.sql\"; cd \"$INF\"; supabase db push'",

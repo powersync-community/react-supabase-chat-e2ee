@@ -8,23 +8,27 @@ export class FakeTx {
 }
 
 export class FakeQuerySub {
-  constructor(public onClose?: () => void) {}
+  constructor(private owner: FakeQuery, public onClose?: () => void) {}
   close() { this.onClose?.(); }
-  registerListener(opts: { onDiff: (diff: { added?: any[]; updated?: any[]; removed?: any[] }) => Promise<void> }) {
-
-    return { close: () => this.close() };
+  registerListener(opts: { onDiff?: (diff: { added?: any[]; updated?: any[]; removed?: any[] }) => Promise<void>; onError?: (err: unknown) => void }) {
+    this.owner.setListener(opts);
+    return () => this.close();
   }
 }
 
 export class FakeQuery {
-  private handler: any = null;
+  private listener: { onDiff?: (diff: { added?: any[]; updated?: any[]; removed?: any[] }) => Promise<void>; onError?: (err: unknown) => void } | null = null;
   differentialWatch(opts: any) {
-    this.handler = opts;
-    return new FakeQuerySub();
+    return new FakeQuerySub(this);
+  }
+  setListener(listener: { onDiff?: (diff: { added?: any[]; updated?: any[]; removed?: any[] }) => Promise<void>; onError?: (err: unknown) => void }) {
+    this.listener = listener;
   }
   /** test helper */
   async emit(diff: { added?: any[]; updated?: any[]; removed?: any[] }) {
-    if (this.handler?.onDiff) await this.handler.onDiff(diff);
+    if (this.listener?.onDiff) {
+      await this.listener.onDiff(diff);
+    }
   }
 }
 

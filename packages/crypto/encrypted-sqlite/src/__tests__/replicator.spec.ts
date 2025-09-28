@@ -66,10 +66,12 @@ describe("replicator", () => {
         updated_at: "2025-01-01T01:00:00.000Z"
       }]
     });
-    const upd = db.lastTx!.calls.find(c => (c.sql as string).includes(`ON CONFLICT(id) DO UPDATE`));
-    expect(upd).toBeTruthy();
-    expect(upd!.params![4]).toBe("A+");
-    expect(upd!.params![5]).toBe(1);
+    const updDelete = db.lastTx!.calls.find(c => (c.sql as string).startsWith(`DELETE FROM ${PAIR.mirrorTable}`));
+    const updInsert = db.lastTx!.calls.find(c => (c.sql as string).includes(`INSERT INTO ${PAIR.mirrorTable}`));
+    expect(updDelete).toBeTruthy();
+    expect(updInsert).toBeTruthy();
+    expect(updInsert!.params![4]).toBe("A+");
+    expect(updInsert!.params![5]).toBe(1);
 
     // removed
     db.lastTx = null;
