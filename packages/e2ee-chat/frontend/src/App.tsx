@@ -3,9 +3,11 @@ import { usePowerSync, useQuery } from '@powersync/react';
 import { createPasswordCrypto } from '@crypto/password';
 import { createDEKCrypto, insertEncrypted, updateEncrypted, generateDEK } from '@crypto/sqlite';
 import type { CryptoProvider } from '@crypto/interface';
+import type { AuthChangeEvent } from '@supabase/supabase-js';
 import AuthScreen from './components/AuthScreen';
 import VaultScreen from './components/VaultScreen';
 import ChatLayout from './components/ChatLayout';
+import ResetPasswordScreen from './components/ResetPasswordScreen';
 import {
   getCurrentUserId,
   getSupabase,
@@ -14,6 +16,8 @@ import {
   signUpWithPassword,
   signInAnonymously,
   isAnonymousSupported,
+  sendPasswordResetEmail,
+  updateCurrentUserPassword,
 } from './utils/supabase';
 import { ensureVaultKey } from './utils/keyring';
 import { CHAT_MESSAGES_PAIR, CHAT_ROOMS_PAIR } from './encrypted/chatPairs';
@@ -24,8 +28,9 @@ import { startChatMirrors } from './encrypted/chatMirrors';
 import { ensureIdentityKeyPair, loadPeerPublicKey, type IdentityKeyPair } from './crypto/identity';
 import { wrapRoomKey, unwrapRoomKey } from './crypto/roomKeys';
 
-function useSupabaseUser(): string | null {
+function useSupabaseUser(): { userId: string | null; authEvent: AuthChangeEvent | null } {
   const [userId, setUserId] = useState<string | null>(null);
+  const [authEvent, setAuthEvent] = useState<AuthChangeEvent | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -39,7 +44,8 @@ function useSupabaseUser(): string | null {
       mounted = false;
     };
 
-    const { data: listener } = client.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+      setAuthEvent(event);
       setUserId(session?.user?.id ?? null);
     });
 
@@ -49,7 +55,7 @@ function useSupabaseUser(): string | null {
     };
   }, []);
 
-  return userId;
+  return { userId, authEvent };
 }
 
 function useVaultProviders(userId: string | null) {
@@ -107,7 +113,7 @@ type RoomKeyRow = {
 export default function App() {
   const db = usePowerSync();
   const [dbReady, setDbReady] = useState(false);
-  const userId = useSupabaseUser();
+  const { userId, authEvent } = useSupabaseUser();
   const providers = useVaultProviders(userId);
 
   if (typeof window !== 'undefined' && import.meta.env.MODE !== 'production') {
@@ -121,6 +127,7 @@ export default function App() {
   const [optimisticMessages, setOptimisticMessages] = useState<MessagePlain[]>([]);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [mirrorsStarted, setMirrorsStarted] = useState(false);
+  const [passwordResetPending, setPasswordResetPending] = useState(false);
   const [guestSupported, setGuestSupported] = useState(() => isAnonymousSupported());
 
   useEffect(() => {
@@ -149,6 +156,15 @@ export default function App() {
   useEffect(() => {
     setGuestSupported(isAnonymousSupported());
   }, [userId]);
+
+  useEffect(() => {
+    if (!authEvent) return;
+    if (authEvent === 'PASSWORD_RECOVERY') {
+      setPasswordResetPending(true);
+    } else if (authEvent === 'SIGNED_OUT') {
+      setPasswordResetPending(false);
+    }
+  }, [authEvent]);
 
   const roomProviders = useMemo(() => {
     const map = new Map<string, CryptoProvider>();
@@ -362,6 +378,23 @@ export default function App() {
     }
   };
 
+  const handleResetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(email);
+    } catch (err: any) {
+      throw new Error(err?.message ?? 'Failed to send reset email');
+    }
+  };
+
+  const handleCompletePasswordReset = async (password: string) => {
+    try {
+      await updateCurrentUserPassword(password);
+      setPasswordResetPending(false);
+    } catch (err: any) {
+      throw new Error(err?.message ?? 'Could not update password');
+    }
+  };
+
   const handleGuestSignIn = async () => {
     try {
       await signInAnonymously();
@@ -377,6 +410,7 @@ export default function App() {
     setRoomKeys(new Map());
     setOptimisticMessages([]);
     setActiveRoomId(null);
+    setPasswordResetPending(false);
   };
 
   const handleCreateVault = async (passphrase: string) => {
@@ -541,11 +575,16 @@ export default function App() {
     }
   };
 
+  if (passwordResetPending) {
+    return <ResetPasswordScreen onSubmit={handleCompletePasswordReset} onCancel={handleSignOut} />;
+  }
+
   if (!userId) {
     return (
       <AuthScreen
         onSignIn={handleSignIn}
         onSignUp={handleSignUp}
+        onResetPassword={handleResetPassword}
         onGuestSignIn={guestSupported ? handleGuestSignIn : undefined}
         allowGuest={guestSupported}
       />

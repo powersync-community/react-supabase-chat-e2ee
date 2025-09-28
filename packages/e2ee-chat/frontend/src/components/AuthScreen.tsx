@@ -3,20 +3,30 @@ import { useState } from 'react';
 type AuthScreenProps = {
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
+  onResetPassword: (email: string) => Promise<void>;
   onGuestSignIn?: () => Promise<void>;
   allowGuest?: boolean;
 };
 
-export default function AuthScreen({ onSignIn, onSignUp, onGuestSignIn, allowGuest = false }: AuthScreenProps) {
+export default function AuthScreen({
+  onSignIn,
+  onSignUp,
+  onResetPassword,
+  onGuestSignIn,
+  allowGuest = false,
+}: AuthScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
   const [signingUp, setSigningUp] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   async function handle(callback: (email: string, password: string) => Promise<void>, mode: 'in' | 'up') {
     setError(null);
+    setInfoMessage(null);
     if (!email || !password) {
       setError('Email and password are required.');
       return;
@@ -36,6 +46,7 @@ export default function AuthScreen({ onSignIn, onSignUp, onGuestSignIn, allowGue
   async function handleGuest() {
     if (!onGuestSignIn) return;
     setError(null);
+    setInfoMessage(null);
     setGuestLoading(true);
     try {
       await onGuestSignIn();
@@ -43,6 +54,24 @@ export default function AuthScreen({ onSignIn, onSignUp, onGuestSignIn, allowGue
       setError(err?.message ?? 'Guest sign-in failed.');
     } finally {
       setGuestLoading(false);
+    }
+  }
+
+  async function handlePasswordReset() {
+    setError(null);
+    setInfoMessage(null);
+    if (!email) {
+      setError('Enter your email to receive a reset link.');
+      return;
+    }
+    setResetting(true);
+    try {
+      await onResetPassword(email);
+      setInfoMessage('If that email exists in our system, a reset link is on its way.');
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to send reset email.');
+    } finally {
+      setResetting(false);
     }
   }
 
@@ -78,6 +107,11 @@ export default function AuthScreen({ onSignIn, onSignUp, onGuestSignIn, allowGue
                   {error}
                 </div>
               ) : null}
+              {infoMessage ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-700 mb-4" role="status">
+                  {infoMessage}
+                </div>
+              ) : null}
               <form
                 className="flex flex-col gap-3"
                 onSubmit={(e) => {
@@ -101,6 +135,16 @@ export default function AuthScreen({ onSignIn, onSignUp, onGuestSignIn, allowGue
                   value={password}
                   onChange={(ev) => setPassword(ev.target.value)}
                 />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/60 rounded"
+                    onClick={handlePasswordReset}
+                    disabled={resetting || !email}
+                  >
+                    {resetting ? 'Sending reset link…' : 'Forgot password?'}
+                  </button>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button
                     type="submit"

@@ -43,6 +43,23 @@ export async function signUpWithPassword(email: string, password: string) {
   if (error) throw error;
 }
 
+export async function sendPasswordResetEmail(email: string) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase not configured');
+  const redirectTo = import.meta.env.VITE_SUPABASE_RESET_REDIRECT_URL?.trim();
+  const result = redirectTo
+    ? await sb.auth.resetPasswordForEmail(email, { redirectTo })
+    : await sb.auth.resetPasswordForEmail(email);
+  if (result.error) throw result.error;
+}
+
+export async function updateCurrentUserPassword(newPassword: string) {
+  const sb = getSupabase();
+  if (!sb) throw new Error('Supabase not configured');
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 export async function signOut() {
   const sb = getSupabase();
   if (!sb) return;
