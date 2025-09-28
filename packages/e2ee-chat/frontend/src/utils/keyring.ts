@@ -1,11 +1,11 @@
-import type { CryptoProvider, CipherEnvelope } from '@crypto/interface';
-import type { AbstractPowerSyncDatabase } from '@powersync/web';
-import { bytesToBase64 } from '@crypto/interface';
-import { generateDEK } from '@crypto/sqlite';
+import type { CryptoProvider, CipherEnvelope } from "@crypto/interface";
+import type { AbstractPowerSyncDatabase } from "@powersync/web";
+import { bytesToBase64 } from "@crypto/interface";
+import { generateDEK } from "@crypto/sqlite";
 
-type ProviderKind = 'password' | 'webauthn';
+type ProviderKind = "password" | "webauthn";
 
-const KEY_TABLE = 'chat_e2ee_keys';
+const KEY_TABLE = "chat_e2ee_keys";
 
 export type WrappedKeyRow = {
   user_id: string;
@@ -43,13 +43,16 @@ export async function ensureVaultKey(
       );
       return dek;
     } catch (err) {
-      console.error('Existing wrapped key cannot be decrypted with this credential.', err);
+      console.error(
+        "Existing wrapped key cannot be decrypted with this credential.",
+        err,
+      );
       throw err instanceof Error ? err : new Error(String(err));
     }
   }
 
   const dek = await generateDEK();
-  const aad = 'vault-dek-v1';
+  const aad = "vault-dek-v1";
   const env: CipherEnvelope = await wrapper.encrypt(dek, aad);
   await upsertWrappedKeyLocal(db, userId, providerKind, env, aad, keyId);
   return dek;
@@ -86,7 +89,7 @@ export async function upsertWrappedKeyLocal(
     aad: aad ?? env.header.aad ?? null,
     nonce_b64: env.nB64,
     cipher_b64: env.cB64,
-    kdf_salt_b64: env.header.kdf.saltB64 ?? '',
+    kdf_salt_b64: env.header.kdf.saltB64 ?? "",
     created_at: new Date().toISOString(),
   };
 
@@ -131,13 +134,19 @@ async function derivePBKDF2(
   iterations: number,
 ): Promise<Uint8Array> {
   const pw = new TextEncoder().encode(password);
-  const keyMaterial = await crypto.subtle.importKey('raw', pw, 'PBKDF2', false, ['deriveBits']);
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    pw,
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
   const bits = await crypto.subtle.deriveBits(
     {
-      name: 'PBKDF2',
-      salt: (salt as unknown as BufferSource),
+      name: "PBKDF2",
+      salt: salt as unknown as BufferSource,
       iterations,
-      hash: 'SHA-256',
+      hash: "SHA-256",
     },
     keyMaterial,
     256,
@@ -146,18 +155,24 @@ async function derivePBKDF2(
 }
 
 async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
-  const hash = await crypto.subtle.digest('SHA-256', bytes as unknown as BufferSource);
+  const hash = await crypto.subtle.digest(
+    "SHA-256",
+    bytes as unknown as BufferSource,
+  );
   return new Uint8Array(hash);
 }
 
-export async function buildVerifierAAD(password: string, iterations = 10000): Promise<string> {
+export async function buildVerifierAAD(
+  password: string,
+  iterations = 10000,
+): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const derived = await derivePBKDF2(password, salt, iterations);
   const digest = await sha256(derived);
   return JSON.stringify({
     v: 1,
     ver: {
-      alg: 'pbkdf2-sha256',
+      alg: "pbkdf2-sha256",
       iterations,
       saltB64: bytesToBase64(salt),
       hB64: bytesToBase64(digest),

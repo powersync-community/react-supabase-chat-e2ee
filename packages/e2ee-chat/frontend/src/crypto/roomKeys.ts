@@ -1,7 +1,11 @@
-import { bytesToBase64, base64ToBytes, type CipherEnvelope } from '@crypto/interface';
-import sodium from 'libsodium-wrappers-sumo';
+import {
+  bytesToBase64,
+  base64ToBytes,
+  type CipherEnvelope,
+} from "@crypto/interface";
+import sodium from "libsodium-wrappers-sumo";
 
-const ALG = 'xchacha20poly1305/x25519-wrap-v1';
+const ALG = "xchacha20poly1305/x25519-wrap-v1";
 
 export type RoomKeyWrapContext = {
   roomId: string;
@@ -13,11 +17,18 @@ function buildContextString(ctx: RoomKeyWrapContext): string {
   return `room:${ctx.roomId}|from:${ctx.senderId}|to:${ctx.recipientId}`;
 }
 
-async function deriveWrapKey(ourSecretKey: Uint8Array, peerPublicKey: Uint8Array, ctx: RoomKeyWrapContext): Promise<Uint8Array> {
+async function deriveWrapKey(
+  ourSecretKey: Uint8Array,
+  peerPublicKey: Uint8Array,
+  ctx: RoomKeyWrapContext,
+): Promise<Uint8Array> {
   await sodium.ready;
   const shared = sodium.crypto_scalarmult(ourSecretKey, peerPublicKey);
   const context = buildContextString(ctx);
-  const contextDigest = sodium.crypto_generichash(32, sodium.from_string(context));
+  const contextDigest = sodium.crypto_generichash(
+    32,
+    sodium.from_string(context),
+  );
   return sodium.crypto_generichash(32, shared, contextDigest);
 }
 
@@ -29,7 +40,9 @@ export async function wrapRoomKey(
 ): Promise<CipherEnvelope> {
   await sodium.ready;
   const wrapKey = await deriveWrapKey(ourSecretKey, recipientPublicKey, ctx);
-  const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES);
+  const nonce = sodium.randombytes_buf(
+    sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES,
+  );
   const aad = buildContextString(ctx);
   const cipher = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
     roomKey,
@@ -43,7 +56,7 @@ export async function wrapRoomKey(
       v: 1,
       alg: ALG,
       aad,
-      kdf: { saltB64: '' },
+      kdf: { saltB64: "" },
     },
     nB64: bytesToBase64(nonce),
     cB64: bytesToBase64(cipher),
@@ -57,8 +70,10 @@ export async function unwrapRoomKey(
   ctx: RoomKeyWrapContext,
 ): Promise<Uint8Array> {
   await sodium.ready;
-  if (!envelope.header.alg.startsWith('xchacha20poly1305/x25519-wrap')) {
-    throw new Error(`Unsupported room key wrapping algorithm: ${envelope.header.alg}`);
+  if (!envelope.header.alg.startsWith("xchacha20poly1305/x25519-wrap")) {
+    throw new Error(
+      `Unsupported room key wrapping algorithm: ${envelope.header.alg}`,
+    );
   }
   const wrapKey = await deriveWrapKey(ourSecretKey, peerPublicKey, ctx);
   const nonce = base64ToBytes(envelope.nB64);

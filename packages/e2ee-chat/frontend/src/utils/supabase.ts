@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
 
@@ -13,7 +13,7 @@ export function getSupabase(): SupabaseClient | null {
 export async function getAccessToken(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) {
-    console.warn('Supabase not configured');
+    console.warn("Supabase not configured");
     return null;
   }
   const { data } = await sb.auth.getSession();
@@ -31,21 +31,21 @@ export async function getCurrentUserId(): Promise<string | null> {
 
 export async function signInWithPassword(email: string, password: string) {
   const sb = getSupabase();
-  if (!sb) throw new Error('Supabase not configured');
+  if (!sb) throw new Error("Supabase not configured");
   const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) throw error;
 }
 
 export async function signUpWithPassword(email: string, password: string) {
   const sb = getSupabase();
-  if (!sb) throw new Error('Supabase not configured');
+  if (!sb) throw new Error("Supabase not configured");
   const { error } = await sb.auth.signUp({ email, password });
   if (error) throw error;
 }
 
 export async function sendPasswordResetEmail(email: string) {
   const sb = getSupabase();
-  if (!sb) throw new Error('Supabase not configured');
+  if (!sb) throw new Error("Supabase not configured");
   const redirectTo = import.meta.env.VITE_SUPABASE_RESET_REDIRECT_URL?.trim();
   const result = redirectTo
     ? await sb.auth.resetPasswordForEmail(email, { redirectTo })
@@ -55,7 +55,7 @@ export async function sendPasswordResetEmail(email: string) {
 
 export async function updateCurrentUserPassword(newPassword: string) {
   const sb = getSupabase();
-  if (!sb) throw new Error('Supabase not configured');
+  if (!sb) throw new Error("Supabase not configured");
   const { error } = await sb.auth.updateUser({ password: newPassword });
   if (error) throw error;
 }
@@ -68,11 +68,13 @@ export async function signOut() {
 
 export async function signInAnonymously() {
   const sb = getSupabase();
-  if (!sb) throw new Error('Supabase not configured');
+  if (!sb) throw new Error("Supabase not configured");
   const anyAuth: any = (sb as any).auth;
-  if (typeof anyAuth?.signInAnonymously !== 'function') {
-    const err: any = new Error('Anonymous auth not available. Enable Anonymous provider in Supabase Auth.');
-    err.code = 'ANON_UNAVAILABLE';
+  if (typeof anyAuth?.signInAnonymously !== "function") {
+    const err: any = new Error(
+      "Anonymous auth not available. Enable Anonymous provider in Supabase Auth.",
+    );
+    err.code = "ANON_UNAVAILABLE";
     throw err;
   }
   const { error } = await anyAuth.signInAnonymously();
@@ -82,5 +84,5 @@ export async function signInAnonymously() {
 export function isAnonymousSupported(): boolean {
   const sb = getSupabase();
   if (!sb) return false;
-  return typeof (sb as any).auth?.signInAnonymously === 'function';
+  return typeof (sb as any).auth?.signInAnonymously === "function";
 }

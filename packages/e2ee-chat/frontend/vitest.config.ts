@@ -1,8 +1,7 @@
-import { defineConfig, searchForWorkspaceRoot } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 
-import commonConfig from '../../../vitest.config.ts'
-
+import commonConfig from "../../../vitest.config.ts";
 
 export default defineConfig({
-    ...commonConfig
-})
+  ...commonConfig,
+});

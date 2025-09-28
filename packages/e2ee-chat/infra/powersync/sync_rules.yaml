@@ -25,6 +25,7 @@ bucket_definitions:
     parameters: SELECT room_id FROM public.chat_room_members WHERE user_id = request.user_id()
     data:
       - SELECT * FROM public.chat_rooms WHERE id = bucket.room_id
+      - SELECT * FROM public.chat_room_members WHERE room_id = bucket.room_id
 
   membership_messages:
     parameters: SELECT room_id FROM public.chat_room_members WHERE user_id = request.user_id()

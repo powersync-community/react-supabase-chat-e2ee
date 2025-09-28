@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { PowerSyncContext } from '@powersync/react';
+import React, { useEffect, useMemo } from "react";
+import { PowerSyncContext } from "@powersync/react";
 import {
   PowerSyncDatabase,
   BaseObserver,
@@ -12,14 +12,17 @@ import {
   CrudEntry,
   UpdateType,
   SyncClientImplementation,
-} from '@powersync/web';
-import type { SupabaseClient } from '@supabase/supabase-js';
+} from "@powersync/web";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { ensurePairsDDL, installPairsOnSchema } from '@crypto/sqlite';
-import { CHAT_PAIRS } from '../encrypted/chatPairs';
-import { getAccessToken, getSupabase } from '../utils/supabase';
+import { ensurePairsDDL, installPairsOnSchema } from "@crypto/sqlite";
+import { CHAT_PAIRS } from "../encrypted/chatPairs";
+import { getAccessToken, getSupabase } from "../utils/supabase";
 
-class TokenConnector extends BaseObserver<{}> implements PowerSyncBackendConnector {
+class TokenConnector
+  extends BaseObserver<{}>
+  implements PowerSyncBackendConnector
+{
   private client: SupabaseClient | null;
   constructor(private endpoint: string) {
     super();
@@ -28,7 +31,7 @@ class TokenConnector extends BaseObserver<{}> implements PowerSyncBackendConnect
 
   async fetchCredentials(): Promise<PowerSyncCredentials> {
     const token = await getAccessToken();
-    if (!token) throw new Error('Not authenticated');
+    if (!token) throw new Error("Not authenticated");
     return { endpoint: this.endpoint, token };
   }
 
@@ -53,21 +56,21 @@ class TokenConnector extends BaseObserver<{}> implements PowerSyncBackendConnect
               break;
             }
             case UpdateType.PATCH: {
-              result = await table.update(op.opData).eq('id', op.id);
+              result = await table.update(op.opData).eq("id", op.id);
               break;
             }
             case UpdateType.DELETE: {
-              result = await table.delete().eq('id', op.id);
+              result = await table.delete().eq("id", op.id);
               break;
             }
           }
           if (result?.error) {
-            throw new Error(result.error.message || 'Supabase error');
+            throw new Error(result.error.message || "Supabase error");
           }
         }
         await tx.complete();
       } catch (err) {
-        console.error('uploadData error', err, 'last op', lastOp);
+        console.error("uploadData error", err, "last op", lastOp);
         throw err;
       }
     }
@@ -141,12 +144,14 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
 
     const schema = installPairsOnSchema(baseSchema, CHAT_PAIRS);
 
-    if (import.meta.env.DEV && typeof window !== 'undefined') {
-      (window as any).__powersyncRawTables = schema.rawTables.map((table) => table.name);
+    if (import.meta.env.DEV && typeof window !== "undefined") {
+      (window as any).__powersyncRawTables = schema.rawTables.map(
+        (table) => table.name,
+      );
     }
 
     return new PowerSyncDatabase({
-      database: { dbFilename: 'powersync-chat-e2ee.db' },
+      database: { dbFilename: "powersync-chat-e2ee.db" },
       schema,
       flags: { disableSSRWarning: true },
     });
@@ -162,17 +167,24 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         await ensurePairsDDL(db, CHAT_PAIRS);
         if (cancelled) return;
-        await db.connect(connector, { clientImplementation: SyncClientImplementation.RUST });
+        await db.connect(connector, {
+          clientImplementation: SyncClientImplementation.RUST,
+        });
         if (cancelled) return;
         await db.waitForReady();
       } catch (err: any) {
-        const msg = err?.message ?? String(err ?? '');
-        if (msg.includes('powersync_replace_schema') || msg.includes('powersync_drop_view')) {
-          console.warn('PowerSync schema mismatch. Clearing local DB and retrying.');
+        const msg = err?.message ?? String(err ?? "");
+        if (
+          msg.includes("powersync_replace_schema") ||
+          msg.includes("powersync_drop_view")
+        ) {
+          console.warn(
+            "PowerSync schema mismatch. Clearing local DB and retrying.",
+          );
           try {
             await db.disconnectAndClear({ clearLocal: true });
           } catch (clearErr) {
-            console.error('Failed to clear PowerSync DB', clearErr);
+            console.error("Failed to clear PowerSync DB", clearErr);
           }
           if (cancelled) return;
           try {
@@ -180,24 +192,33 @@ export function SystemProvider({ children }: { children: React.ReactNode }) {
             if (cancelled) return;
             await ensurePairsDDL(db, CHAT_PAIRS);
             if (cancelled) return;
-            await db.connect(connector, { clientImplementation: SyncClientImplementation.RUST });
+            await db.connect(connector, {
+              clientImplementation: SyncClientImplementation.RUST,
+            });
             if (cancelled) return;
             await db.waitForReady();
           } catch (retryErr) {
-            console.error('PowerSync init/connect failed after reset', retryErr);
+            console.error(
+              "PowerSync init/connect failed after reset",
+              retryErr,
+            );
           }
         } else {
-          console.error('PowerSync init/connect failed', err);
+          console.error("PowerSync init/connect failed", err);
         }
       }
     })();
     return () => {
       cancelled = true;
-      db.disconnect().catch((disconnectErr) => console.warn('PowerSync disconnect error', disconnectErr));
+      db.disconnect().catch((disconnectErr) =>
+        console.warn("PowerSync disconnect error", disconnectErr),
+      );
     };
   }, [db, endpoint]);
 
-  return <PowerSyncContext.Provider value={db}>{children}</PowerSyncContext.Provider>;
+  return (
+    <PowerSyncContext.Provider value={db}>{children}</PowerSyncContext.Provider>
+  );
 }
 
 export default SystemProvider;

@@ -1,13 +1,16 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from "react";
 
 type ResetPasswordScreenProps = {
   onSubmit: (password: string) => Promise<void>;
   onCancel: () => Promise<void> | void;
 };
 
-export default function ResetPasswordScreen({ onSubmit, onCancel }: ResetPasswordScreenProps) {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+export default function ResetPasswordScreen({
+  onSubmit,
+  onCancel,
+}: ResetPasswordScreenProps) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -15,22 +18,22 @@ export default function ResetPasswordScreen({ onSubmit, onCancel }: ResetPasswor
     event.preventDefault();
     setError(null);
     if (!password) {
-      setError('Enter a new password.');
+      setError("Enter a new password.");
       return;
     }
     if (password.length < 8) {
-      setError('Use at least 8 characters.');
+      setError("Use at least 8 characters.");
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError("Passwords do not match.");
       return;
     }
     setLoading(true);
     try {
       await onSubmit(password);
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to update password.');
+      setError(err?.message ?? "Failed to update password.");
     } finally {
       setLoading(false);
     }
@@ -42,7 +45,9 @@ export default function ResetPasswordScreen({ onSubmit, onCancel }: ResetPasswor
         <div className="max-w-md w-full">
           <div className="card px-8 py-10 space-y-6">
             <div className="space-y-1.5 text-center">
-              <h2 className="text-2xl font-semibold text-slate-900">Set a new password</h2>
+              <h2 className="text-2xl font-semibold text-slate-900">
+                Set a new password
+              </h2>
               <p className="text-sm text-slate-500">
                 Enter a fresh password to finish resetting your account.
               </p>
@@ -81,7 +86,7 @@ export default function ResetPasswordScreen({ onSubmit, onCancel }: ResetPasswor
               </div>
               <div className="flex flex-col sm:flex-row gap-3 pt-2 w-full">
                 <button type="submit" className="btn w-full" disabled={loading}>
-                  {loading ? 'Updating…' : 'Update Password'}
+                  {loading ? "Updating…" : "Update Password"}
                 </button>
                 <button
                   type="button"

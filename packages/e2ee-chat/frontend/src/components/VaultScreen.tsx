@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 type VaultScreenProps = {
   hasVault: boolean;
@@ -7,23 +7,28 @@ type VaultScreenProps = {
   onSignOut: () => void | Promise<void>;
 };
 
-export default function VaultScreen({ hasVault, onCreateVault, onUnlockVault, onSignOut }: VaultScreenProps) {
-  const [passphrase, setPassphrase] = useState('');
+export default function VaultScreen({
+  hasVault,
+  onCreateVault,
+  onUnlockVault,
+  onSignOut,
+}: VaultScreenProps) {
+  const [passphrase, setPassphrase] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(action: (passphrase: string) => Promise<void>) {
     setError(null);
     if (!passphrase) {
-      setError('Passphrase required.');
+      setError("Passphrase required.");
       return;
     }
     setLoading(true);
     try {
       await action(passphrase);
-      setPassphrase('');
+      setPassphrase("");
     } catch (err: any) {
-      setError(err?.message ?? 'Vault operation failed.');
+      setError(err?.message ?? "Vault operation failed.");
     } finally {
       setLoading(false);
     }
@@ -36,13 +41,18 @@ export default function VaultScreen({ hasVault, onCreateVault, onUnlockVault, on
           <div className="card px-8 py-10">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
               <div className="space-y-1.5">
-                <h1 className="text-2xl font-semibold text-slate-900" data-testid="vault-heading">
-                  {hasVault ? 'Unlock your chat vault' : 'Create your encrypted vault'}
+                <h1
+                  className="text-2xl font-semibold text-slate-900"
+                  data-testid="vault-heading"
+                >
+                  {hasVault
+                    ? "Unlock your chat vault"
+                    : "Create your encrypted vault"}
                 </h1>
                 <p className="text-sm text-slate-500">
                   {hasVault
-                    ? 'Enter the passphrase you used to secure this device.'
-                    : 'Choose a passphrase. We use it locally to unwrap your data keys.'}
+                    ? "Enter the passphrase you used to secure this device."
+                    : "Choose a passphrase. We use it locally to unwrap your data keys."}
                 </p>
               </div>
               <button
@@ -68,14 +78,25 @@ export default function VaultScreen({ hasVault, onCreateVault, onUnlockVault, on
             >
               <input
                 className="input h-12"
-                placeholder={hasVault ? 'Passphrase' : 'Choose a passphrase'}
+                placeholder={hasVault ? "Passphrase" : "Choose a passphrase"}
                 type="password"
                 value={passphrase}
                 onChange={(ev) => setPassphrase(ev.target.value)}
                 data-testid="vault-passphrase-input"
               />
-              <button type="submit" className="btn" disabled={loading} data-testid="vault-submit-button">
-                {loading ? (hasVault ? 'Unlocking…' : 'Creating…') : hasVault ? 'Unlock Vault' : 'Create Vault'}
+              <button
+                type="submit"
+                className="btn"
+                disabled={loading}
+                data-testid="vault-submit-button"
+              >
+                {loading
+                  ? hasVault
+                    ? "Unlocking…"
+                    : "Creating…"
+                  : hasVault
+                    ? "Unlock Vault"
+                    : "Create Vault"}
               </button>
             </form>
           </div>

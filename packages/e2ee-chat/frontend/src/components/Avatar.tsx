@@ -1,4 +1,3 @@
-
 function hashString(input: string): number {
   let hash = 0;
   for (let i = 0; i < input.length; i += 1) {
@@ -13,8 +12,8 @@ function hueFromString(input: string): number {
 }
 
 function initialsFromId(id: string): string {
-  const cleaned = id.replace(/[^a-z0-9]/gi, '');
-  if (cleaned.length === 0) return '??';
+  const cleaned = id.replace(/[^a-z0-9]/gi, "");
+  if (cleaned.length === 0) return "??";
   if (cleaned.length === 1) return cleaned[0]!.toUpperCase();
   return `${cleaned[0]!.toUpperCase()}${cleaned[cleaned.length - 1]!.toUpperCase()}`;
 }
@@ -34,7 +33,7 @@ export function Avatar({ userId, size = 40, className }: AvatarProps) {
 
   return (
     <div
-      className={`inline-flex items-center justify-center rounded-full font-semibold select-none shadow-sm ${className ?? ''}`}
+      className={`inline-flex items-center justify-center rounded-full font-semibold select-none shadow-sm ${className ?? ""}`}
       style={{
         width: size,
         height: size,
@@ -48,13 +47,23 @@ export function Avatar({ userId, size = 40, className }: AvatarProps) {
   );
 }
 
-export function AvatarWithLabel({ userId, label }: { userId: string; label: string }) {
+export function AvatarWithLabel({
+  userId,
+  label,
+}: {
+  userId: string;
+  label: string;
+}) {
   return (
     <div className="flex items-center gap-3">
       <Avatar userId={userId} size={36} />
       <div className="flex flex-col">
-        <span className="font-medium text-sm text-slate-900 dark:text-slate-100">{label}</span>
-        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">{userId}</span>
+        <span className="font-medium text-sm text-slate-900 dark:text-slate-100">
+          {label}
+        </span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+          {userId}
+        </span>
       </div>
     </div>
   );

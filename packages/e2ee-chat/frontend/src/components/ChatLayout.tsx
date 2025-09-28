@@ -1,6 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bars3Icon, PaperAirplaneIcon, PlusIcon, UserGroupIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/solid';
-import { Avatar } from './Avatar';
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bars3Icon,
+  PaperAirplaneIcon,
+  PlusIcon,
+  UserGroupIcon,
+  UserPlusIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/solid";
+import { Avatar } from "./Avatar";
 
 type Room = {
   id: string;
@@ -55,14 +62,19 @@ export default function ChatLayout(props: ChatLayoutProps) {
   } = props;
 
   const [showRoomsDrawer, setShowRoomsDrawer] = useState(false);
-  const activeRoom = useMemo(() => rooms.find((room) => room.id === activeRoomId) ?? null, [rooms, activeRoomId]);
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
+  const activeRoom = useMemo(
+    () => rooms.find((room) => room.id === activeRoomId) ?? null,
+    [rooms, activeRoomId],
+  );
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">(
+    "idle",
+  );
   const [showUserMenu, setShowUserMenu] = useState(false);
   const copyResetTimer = useRef<number | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-  return () => {
+    return () => {
       if (copyResetTimer.current) {
         window.clearTimeout(copyResetTimer.current);
       }
@@ -76,8 +88,8 @@ export default function ChatLayout(props: ChatLayoutProps) {
       if (userMenuRef.current.contains(event.target as Node)) return;
       setShowUserMenu(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [showUserMenu]);
 
   async function handleCopyUserId() {
@@ -86,17 +98,20 @@ export default function ChatLayout(props: ChatLayoutProps) {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(userId);
       } else {
-        throw new Error('Clipboard API unavailable');
+        throw new Error("Clipboard API unavailable");
       }
-      setCopyStatus('copied');
+      setCopyStatus("copied");
     } catch (err) {
-      console.warn('Failed to copy user ID', err);
-      setCopyStatus('error');
+      console.warn("Failed to copy user ID", err);
+      setCopyStatus("error");
     } finally {
       if (copyResetTimer.current) {
         window.clearTimeout(copyResetTimer.current);
       }
-      copyResetTimer.current = window.setTimeout(() => setCopyStatus('idle'), 2000);
+      copyResetTimer.current = window.setTimeout(
+        () => setCopyStatus("idle"),
+        2000,
+      );
     }
   }
 
@@ -107,18 +122,25 @@ export default function ChatLayout(props: ChatLayoutProps) {
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
-              className={`btn-secondary-sm h-10 w-10 rounded-full lg:hidden!`}              onClick={() => setShowRoomsDrawer(true)}
+              className={`btn-secondary-sm h-10 w-10 rounded-full lg:hidden!`}
+              onClick={() => setShowRoomsDrawer(true)}
               data-testid="rooms-drawer-button"
               aria-label="Open rooms"
             >
               <Bars3Icon className="h-5 w-5" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-semibold truncate" data-testid="app-heading">
+              <h1
+                className="text-xl sm:text-2xl font-semibold truncate"
+                data-testid="app-heading"
+              >
                 PowerSync E2EE Chat
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                Vault unlocked · {mirrorsStarted ? 'Syncing securely' : 'Starting encrypted sync…'}
+                Vault unlocked ·{" "}
+                {mirrorsStarted
+                  ? "Syncing securely"
+                  : "Starting encrypted sync…"}
               </p>
             </div>
           </div>
@@ -134,8 +156,12 @@ export default function ChatLayout(props: ChatLayoutProps) {
               >
                 <Avatar userId={userId} size={38} />
                 <div className="hidden sm:flex flex-col text-left">
-                  <span className="text-xs text-slate-400 uppercase tracking-wide">You</span>
-                  <span className="font-mono text-xs text-slate-600 dark:text-slate-300">{truncateUserId(userId)}</span>
+                  <span className="text-xs text-slate-400 uppercase tracking-wide">
+                    You
+                  </span>
+                  <span className="font-mono text-xs text-slate-600 dark:text-slate-300">
+                    {truncateUserId(userId)}
+                  </span>
                 </div>
               </button>
               {showUserMenu ? (
@@ -146,8 +172,13 @@ export default function ChatLayout(props: ChatLayoutProps) {
                   <div className="flex items-center gap-3">
                     <Avatar userId={userId} size={48} />
                     <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Signed in</span>
-                      <span className="font-mono text-xs text-slate-500 dark:text-slate-400" data-testid="user-id">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        Signed in
+                      </span>
+                      <span
+                        className="font-mono text-xs text-slate-500 dark:text-slate-400"
+                        data-testid="user-id"
+                      >
                         {userId}
                       </span>
                     </div>
@@ -159,7 +190,11 @@ export default function ChatLayout(props: ChatLayoutProps) {
                       onClick={handleCopyUserId}
                       data-testid="copy-user-id-button"
                     >
-                      {copyStatus === 'copied' ? 'Copied!' : copyStatus === 'error' ? 'Copy failed' : 'Copy ID'}
+                      {copyStatus === "copied"
+                        ? "Copied!"
+                        : copyStatus === "error"
+                          ? "Copy failed"
+                          : "Copy ID"}
                     </button>
                     <button
                       type="button"
@@ -201,8 +236,16 @@ export default function ChatLayout(props: ChatLayoutProps) {
               canSend={!!activeRoom && canSendToActiveRoom}
               messages={messages}
               members={members}
-              onSendMessage={(text) => (activeRoom ? onSendMessage(activeRoom.id, text) : Promise.resolve())}
-              onInviteUser={(targetUserId) => (activeRoom ? onInviteUser(activeRoom.id, targetUserId) : Promise.resolve())}
+              onSendMessage={(text) =>
+                activeRoom
+                  ? onSendMessage(activeRoom.id, text)
+                  : Promise.resolve()
+              }
+              onInviteUser={(targetUserId) =>
+                activeRoom
+                  ? onInviteUser(activeRoom.id, targetUserId)
+                  : Promise.resolve()
+              }
             />
           </div>
         </div>
@@ -231,16 +274,23 @@ export default function ChatLayout(props: ChatLayoutProps) {
   );
 }
 
-function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant = 'sidebar', onClose }: {
+function RoomsPanel({
+  rooms,
+  activeRoomId,
+  onSelectRoom,
+  onCreateRoom,
+  variant = "sidebar",
+  onClose,
+}: {
   rooms: Room[];
   activeRoomId: string | null;
   onSelectRoom: (roomId: string) => void;
   onCreateRoom: (name: string, topic: string) => Promise<string>;
-  variant?: 'sidebar' | 'drawer';
+  variant?: "sidebar" | "drawer";
   onClose?: () => void;
 }) {
-  const [name, setName] = useState('');
-  const [topic, setTopic] = useState('');
+  const [name, setName] = useState("");
+  const [topic, setTopic] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [showCreator, setShowCreator] = useState(() => rooms.length === 0);
@@ -248,7 +298,7 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
   const formRef = useRef<HTMLDivElement | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
-  const isDrawer = variant === 'drawer';
+  const isDrawer = variant === "drawer";
 
   useEffect(() => {
     if (!showCreator) return;
@@ -259,8 +309,8 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
         setShowCreator(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [showCreator, isDrawer]);
 
   useEffect(() => {
@@ -280,19 +330,19 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
     setError(null);
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Room name required.');
+      setError("Room name required.");
       return;
     }
     setCreating(true);
     try {
       const newRoomId = await onCreateRoom(trimmed, topic.trim());
-      setName('');
-      setTopic('');
+      setName("");
+      setTopic("");
       setShowCreator(false);
       onSelectRoom(newRoomId);
       if (isDrawer && onClose) onClose();
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to create room.');
+      setError(err?.message ?? "Failed to create room.");
     } finally {
       setCreating(false);
     }
@@ -330,7 +380,7 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
           disabled={creating}
           data-testid="create-room-button"
         >
-          {creating ? 'Creating…' : 'Create'}
+          {creating ? "Creating…" : "Create"}
         </button>
         <button
           type="button"
@@ -345,7 +395,7 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
   );
 
   return (
-    <section className={`relative flex flex-col ${isDrawer ? 'h-full' : ''}`}>
+    <section className={`relative flex flex-col ${isDrawer ? "h-full" : ""}`}>
       <div className="card flex h-full flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
@@ -384,14 +434,19 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
             ref={formRef}
             className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/70 shadow-sm p-4 space-y-3"
           >
-            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">New room</h3>
+            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+              New room
+            </h3>
             {creatorForm}
           </div>
         ) : null}
 
         <div className="flex-1 overflow-y-auto -mx-3 px-3">
           {rooms.length === 0 ? (
-            <p className="text-sm text-slate-500 dark:text-slate-400" data-testid="room-empty-state">
+            <p
+              className="text-sm text-slate-500 dark:text-slate-400"
+              data-testid="room-empty-state"
+            >
               No rooms yet. Create one above to start a secure conversation.
             </p>
           ) : (
@@ -404,8 +459,8 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
                       type="button"
                       className={`w-full text-left rounded-lg border transition px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                         isActive
-                          ? 'border-blue-500 bg-blue-50/80 text-blue-900 dark:text-blue-100 dark:bg-blue-900/30'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-blue-300 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-blue-900/30'
+                          ? "border-blue-500 bg-blue-50/80 text-blue-900 dark:text-blue-100 dark:bg-blue-900/30"
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 hover:border-blue-300 dark:hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-blue-900/30"
                       }`}
                       onClick={() => {
                         onSelectRoom(room.id);
@@ -416,11 +471,19 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">
-                          <Avatar userId={room.id} size={34} className="shrink-0" />
+                          <Avatar
+                            userId={room.id}
+                            size={34}
+                            className="shrink-0"
+                          />
                           <div>
-                            <p className="font-medium leading-tight line-clamp-2">{room.name}</p>
+                            <p className="font-medium leading-tight line-clamp-2">
+                              {room.name}
+                            </p>
                             {room.topic ? (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">{room.topic}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
+                                {room.topic}
+                              </p>
                             ) : null}
                           </div>
                         </div>
@@ -436,7 +499,6 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
           )}
         </div>
       </div>
-
     </section>
   );
 }
@@ -458,10 +520,10 @@ function ChatPanel({
   onSendMessage: (text: string) => Promise<void>;
   onInviteUser: (targetUserId: string) => Promise<void>;
 }) {
-  const [messageDraft, setMessageDraft] = useState('');
+  const [messageDraft, setMessageDraft] = useState("");
   const [messageError, setMessageError] = useState<string | null>(null);
   const [messageSending, setMessageSending] = useState(false);
-  const [inviteTarget, setInviteTarget] = useState('');
+  const [inviteTarget, setInviteTarget] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
   const [showInvite, setShowInvite] = useState(true);
@@ -474,13 +536,12 @@ function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const membersSorted = useMemo(
-    () =>
-      [...members].sort((a, b) => a.userId.localeCompare(b.userId)),
+    () => [...members].sort((a, b) => a.userId.localeCompare(b.userId)),
     [members],
   );
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, room?.id]);
 
   useEffect(() => {
@@ -506,8 +567,8 @@ function ChatPanel({
       if (target.closest('[data-popover-toggle="members"]')) return;
       setShowMemberPopover(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [showMemberPopover]);
 
   async function handleSend() {
@@ -516,18 +577,18 @@ function ChatPanel({
     const trimmed = messageDraft.trim();
     if (!trimmed) return;
     if (!canSend) {
-      setMessageError('Room key not available yet.');
+      setMessageError("Room key not available yet.");
       return;
     }
     setMessageSending(true);
     try {
       await onSendMessage(trimmed);
-      setMessageDraft('');
+      setMessageDraft("");
     } catch (err: any) {
-      setMessageError(err?.message ?? 'Could not send message.');
+      setMessageError(err?.message ?? "Could not send message.");
     } finally {
       setMessageSending(false);
-      if (typeof window !== 'undefined') {
+      if (typeof window !== "undefined") {
         window.requestAnimationFrame(() => {
           messageInputRef.current?.focus({ preventScroll: true });
         });
@@ -542,15 +603,15 @@ function ChatPanel({
     setInviteError(null);
     const target = inviteTarget.trim();
     if (!target) {
-      setInviteError('Enter a user ID to invite.');
+      setInviteError("Enter a user ID to invite.");
       return;
     }
     setInviting(true);
     try {
       await onInviteUser(target);
-      setInviteTarget('');
+      setInviteTarget("");
     } catch (err: any) {
-      setInviteError(err?.message ?? 'Failed to invite user.');
+      setInviteError(err?.message ?? "Failed to invite user.");
     } finally {
       setInviting(false);
     }
@@ -562,7 +623,9 @@ function ChatPanel({
     return (
       <section className="col-span-12 lg:col-span-8 xl:col-span-9 flex min-h-0">
         <div className="flex-1 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white/80 dark:bg-slate-900/80 shadow-sm flex items-center justify-center min-h-[18rem]">
-          <p className="text-sm text-slate-500 dark:text-slate-400 text-center px-4">Create or select a room to start chatting.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center px-4">
+            Create or select a room to start chatting.
+          </p>
         </div>
       </section>
     );
@@ -573,7 +636,10 @@ function ChatPanel({
       <div className="relative flex flex-col flex-1 h-full min-h-0 sm:min-h-[28rem] border border-slate-200 dark:border-slate-800/70 rounded-2xl bg-white/90 dark:bg-slate-900/80">
         <div className="p-5 border-b border-slate-200 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-            <h2 className="text-xl font-semibold truncate" data-testid="active-room-heading">
+            <h2
+              className="text-xl font-semibold truncate"
+              data-testid="active-room-heading"
+            >
               {room.name}
             </h2>
             {room.topic ? (
@@ -604,7 +670,9 @@ function ChatPanel({
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Invite member</h3>
+                      <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
+                        Invite member
+                      </h3>
                       <button
                         type="button"
                         className="btn-secondary-sm h-8 w-8 rounded-full"
@@ -637,16 +705,24 @@ function ChatPanel({
                           disabled={inviting}
                           data-testid="invite-user-button"
                         >
-                          {inviting ? 'Inviting…' : 'Invite'}
+                          {inviting ? "Inviting…" : "Invite"}
                         </button>
                       </form>
                     ) : null}
-                    {inviteError ? <span className="text-xs text-red-600">{inviteError}</span> : null}
+                    {inviteError ? (
+                      <span className="text-xs text-red-600">
+                        {inviteError}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="space-y-3 text-sm">
-                    <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Members</h3>
+                    <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
+                      Members
+                    </h3>
                     {membersSorted.length === 0 ? (
-                      <p className="text-xs text-slate-500">No members synced yet.</p>
+                      <p className="text-xs text-slate-500">
+                        No members synced yet.
+                      </p>
                     ) : (
                       <ul className="space-y-2">
                         {membersSorted.map((member) => {
@@ -656,22 +732,32 @@ function ChatPanel({
                               key={member.userId}
                               className={`rounded-xl border transition px-4 py-3 cursor-pointer ${
                                 isSelected
-                                  ? 'border-indigo-400 bg-indigo-50/70 text-indigo-900'
-                                  : 'border-slate-200 bg-white'
+                                  ? "border-indigo-400 bg-indigo-50/70 text-indigo-900"
+                                  : "border-slate-200 bg-white"
                               }`}
-                              onClick={() => setSelectedMember((prev) => (prev === member.userId ? null : member.userId))}
+                              onClick={() =>
+                                setSelectedMember((prev) =>
+                                  prev === member.userId ? null : member.userId,
+                                )
+                              }
                             >
                               <div className="flex items-center gap-3">
                                 <Avatar userId={member.userId} size={32} />
                                 <div className="flex-1">
                                   <div className="flex items-center justify-between text-xs mb-1">
-                                    <span className="font-semibold">{member.userId === userId ? 'You' : member.userId}</span>
+                                    <span className="font-semibold">
+                                      {member.userId === userId
+                                        ? "You"
+                                        : member.userId}
+                                    </span>
                                     <span className="badge">{member.role}</span>
                                   </div>
                                   {isSelected ? (
                                     <div className="space-y-1 text-[11px] text-slate-500">
                                       <div>Invited by {member.invitedBy}</div>
-                                      <div className="text-slate-400">{formatTimestamp(member.joinedAt)}</div>
+                                      <div className="text-slate-400">
+                                        {formatTimestamp(member.joinedAt)}
+                                      </div>
                                     </div>
                                   ) : null}
                                 </div>
@@ -688,10 +774,15 @@ function ChatPanel({
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-6 space-y-3" data-testid="messages-container">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-6 space-y-3"
+          data-testid="messages-container"
+        >
           {messages.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-900/40 px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">
-              {canSend ? 'No messages yet. Say hello!' : 'Waiting for the room key before decrypting messages…'}
+              {canSend
+                ? "No messages yet. Say hello!"
+                : "Waiting for the room key before decrypting messages…"}
             </div>
           ) : (
             messages.map((msg) => {
@@ -699,7 +790,7 @@ function ChatPanel({
               return (
                 <div
                   key={msg.id}
-                  className={`flex items-end gap-3 ${isOwn ? 'justify-end' : 'justify-start'}`}
+                  className={`flex items-end gap-3 ${isOwn ? "justify-end" : "justify-start"}`}
                   data-testid="chat-message"
                   data-message-id={msg.id}
                 >
@@ -707,15 +798,20 @@ function ChatPanel({
                   <div
                     className={`max-w-full sm:max-w-[80%] rounded-2xl border px-4 py-3 shadow-sm transition ${
                       isOwn
-                        ? 'border-blue-500/60 bg-gradient-to-br from-blue-600 to-indigo-500 text-white'
-                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 text-slate-900 dark:text-slate-100'
+                        ? "border-blue-500/60 bg-gradient-to-br from-blue-600 to-indigo-500 text-white"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/70 text-slate-900 dark:text-slate-100"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3 text-[11px] mb-1 opacity-80">
-                      <span data-testid="message-sender">{isOwn ? 'You' : msg.senderId}</span>
+                      <span data-testid="message-sender">
+                        {isOwn ? "You" : msg.senderId}
+                      </span>
                       <span>{formatTimestamp(msg.sentAt)}</span>
                     </div>
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed" data-testid="message-text">
+                    <p
+                      className="text-sm whitespace-pre-wrap leading-relaxed"
+                      data-testid="message-text"
+                    >
                       {msg.text}
                     </p>
                   </div>
@@ -738,11 +834,13 @@ function ChatPanel({
               <textarea
                 className="flex-1 bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none resize-none"
                 rows={1}
-                placeholder={canSend ? 'Type a message' : 'Waiting for room key…'}
+                placeholder={
+                  canSend ? "Type a message" : "Waiting for room key…"
+                }
                 value={messageDraft}
                 onChange={(ev) => setMessageDraft(ev.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
+                  if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
                     void handleSend();
                   }
@@ -772,14 +870,13 @@ function ChatPanel({
   );
 }
 
-
 function formatTimestamp(ts: string) {
   try {
     return new Intl.DateTimeFormat(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-      month: 'short',
-      day: 'numeric',
+      hour: "2-digit",
+      minute: "2-digit",
+      month: "short",
+      day: "numeric",
     }).format(new Date(ts));
   } catch {
     return ts;
@@ -787,7 +884,7 @@ function formatTimestamp(ts: string) {
 }
 
 function truncateUserId(id: string, prefix = 6, suffix = 4): string {
-  if (!id) return '';
+  if (!id) return "";
   if (id.length <= prefix + suffix + 3) return id;
   return `${id.slice(0, prefix)}…${id.slice(-suffix)}`;
 }

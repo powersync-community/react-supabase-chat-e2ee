@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { usePowerSync, useQuery } from '@powersync/react';
-import { createPasswordCrypto } from '@crypto/password';
-import { createDEKCrypto, insertEncrypted, updateEncrypted, generateDEK } from '@crypto/sqlite';
-import type { CryptoProvider } from '@crypto/interface';
-import type { AuthChangeEvent } from '@supabase/supabase-js';
-import AuthScreen from './components/AuthScreen';
-import VaultScreen from './components/VaultScreen';
-import ChatLayout from './components/ChatLayout';
-import ResetPasswordScreen from './components/ResetPasswordScreen';
+import { useEffect, useMemo, useState } from "react";
+import { usePowerSync, useQuery } from "@powersync/react";
+import { createPasswordCrypto } from "@crypto/password";
+import {
+  createDEKCrypto,
+  insertEncrypted,
+  updateEncrypted,
+  generateDEK,
+} from "@crypto/sqlite";
+import type { CryptoProvider } from "@crypto/interface";
+import type { AuthChangeEvent } from "@supabase/supabase-js";
+import AuthScreen from "./components/AuthScreen";
+import VaultScreen from "./components/VaultScreen";
+import ChatLayout from "./components/ChatLayout";
+import ResetPasswordScreen from "./components/ResetPasswordScreen";
 import {
   getCurrentUserId,
   getSupabase,
@@ -18,17 +23,24 @@ import {
   isAnonymousSupported,
   sendPasswordResetEmail,
   updateCurrentUserPassword,
-} from './utils/supabase';
-import { ensureVaultKey } from './utils/keyring';
-import { CHAT_MESSAGES_PAIR, CHAT_ROOMS_PAIR } from './encrypted/chatPairs';
+} from "./utils/supabase";
+import { ensureVaultKey } from "./utils/keyring";
+import { CHAT_MESSAGES_PAIR, CHAT_ROOMS_PAIR } from "./encrypted/chatPairs";
 
 const ROOMS_MIRROR_TABLE = CHAT_ROOMS_PAIR.mirrorTable;
 const MESSAGES_MIRROR_TABLE = CHAT_MESSAGES_PAIR.mirrorTable;
-import { startChatMirrors } from './encrypted/chatMirrors';
-import { ensureIdentityKeyPair, loadPeerPublicKey, type IdentityKeyPair } from './crypto/identity';
-import { wrapRoomKey, unwrapRoomKey } from './crypto/roomKeys';
+import { startChatMirrors } from "./encrypted/chatMirrors";
+import {
+  ensureIdentityKeyPair,
+  loadPeerPublicKey,
+  type IdentityKeyPair,
+} from "./crypto/identity";
+import { wrapRoomKey, unwrapRoomKey } from "./crypto/roomKeys";
 
-function useSupabaseUser(): { userId: string | null; authEvent: AuthChangeEvent | null } {
+function useSupabaseUser(): {
+  userId: string | null;
+  authEvent: AuthChangeEvent | null;
+} {
   const [userId, setUserId] = useState<string | null>(null);
   const [authEvent, setAuthEvent] = useState<AuthChangeEvent | null>(null);
 
@@ -40,14 +52,17 @@ function useSupabaseUser(): { userId: string | null; authEvent: AuthChangeEvent 
     })();
 
     const client = getSupabase();
-    if (!client) return () => {
-      mounted = false;
-    };
+    if (!client)
+      return () => {
+        mounted = false;
+      };
 
-    const { data: listener } = client.auth.onAuthStateChange((event, session) => {
-      setAuthEvent(event);
-      setUserId(session?.user?.id ?? null);
-    });
+    const { data: listener } = client.auth.onAuthStateChange(
+      (event, session) => {
+        setAuthEvent(event);
+        setUserId(session?.user?.id ?? null);
+      },
+    );
 
     return () => {
       mounted = false;
@@ -60,16 +75,18 @@ function useSupabaseUser(): { userId: string | null; authEvent: AuthChangeEvent 
 
 function useVaultProviders(userId: string | null) {
   const { data } = useQuery(
-    'SELECT provider FROM chat_e2ee_keys WHERE user_id = ?',
-    [userId ?? ''],
+    "SELECT provider FROM chat_e2ee_keys WHERE user_id = ?",
+    [userId ?? ""],
     { throttleMs: 150 },
   );
   return useMemo(() => {
-    const rows = Array.isArray(data) ? (data as Array<{ provider: string }>) : [];
+    const rows = Array.isArray(data)
+      ? (data as Array<{ provider: string }>)
+      : [];
     const providers = new Set(rows.map((r) => r.provider));
     return {
       haveAny: providers.size > 0,
-      havePassword: providers.has('password'),
+      havePassword: providers.has("password"),
     };
   }, [data]);
 }
@@ -116,7 +133,7 @@ export default function App() {
   const { userId, authEvent } = useSupabaseUser();
   const providers = useVaultProviders(userId);
 
-  if (typeof window !== 'undefined' && import.meta.env.MODE !== 'production') {
+  if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
     (window as any).__powersyncDb = db;
     (window as any).__powersyncUserId = userId;
   }
@@ -124,11 +141,15 @@ export default function App() {
   const [dataCrypto, setDataCrypto] = useState<CryptoProvider | null>(null);
   const [identity, setIdentity] = useState<IdentityKeyPair | null>(null);
   const [roomKeys, setRoomKeys] = useState<Map<string, Uint8Array>>(new Map());
-  const [optimisticMessages, setOptimisticMessages] = useState<MessagePlain[]>([]);
+  const [optimisticMessages, setOptimisticMessages] = useState<MessagePlain[]>(
+    [],
+  );
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [mirrorsStarted, setMirrorsStarted] = useState(false);
   const [passwordResetPending, setPasswordResetPending] = useState(false);
-  const [guestSupported, setGuestSupported] = useState(() => isAnonymousSupported());
+  const [guestSupported, setGuestSupported] = useState(() =>
+    isAnonymousSupported(),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -137,7 +158,7 @@ export default function App() {
         await db.waitForReady();
         if (!cancelled) setDbReady(true);
       } catch (err) {
-        console.error('Failed to wait for PowerSync readiness', err);
+        console.error("Failed to wait for PowerSync readiness", err);
       }
     })();
     return () => {
@@ -159,9 +180,9 @@ export default function App() {
 
   useEffect(() => {
     if (!authEvent) return;
-    if (authEvent === 'PASSWORD_RECOVERY') {
+    if (authEvent === "PASSWORD_RECOVERY") {
       setPasswordResetPending(true);
-    } else if (authEvent === 'SIGNED_OUT') {
+    } else if (authEvent === "SIGNED_OUT") {
       setPasswordResetPending(false);
     }
   }, [authEvent]);
@@ -180,7 +201,10 @@ export default function App() {
       { db, userId, crypto: dataCrypto },
       {
         resolveCrypto: (row) => {
-          const candidate = (row.bucket_id as string | undefined) ?? (row as any).room_id ?? (row.id as string | undefined);
+          const candidate =
+            (row.bucket_id as string | undefined) ??
+            (row as any).room_id ??
+            (row.id as string | undefined);
           if (!candidate) return null;
           return roomProviders.get(candidate) ?? null;
         },
@@ -201,7 +225,7 @@ export default function App() {
         const pair = await ensureIdentityKeyPair(db, userId, dataCrypto);
         if (!cancelled) setIdentity(pair);
       } catch (err) {
-        console.error('Failed to ensure identity key pair', err);
+        console.error("Failed to ensure identity key pair", err);
       }
     })();
     return () => {
@@ -210,14 +234,16 @@ export default function App() {
   }, [db, userId, dataCrypto]);
 
   const { data: roomKeyRows } = useQuery(
-    'SELECT * FROM chat_room_keys WHERE user_id = ?',
-    [userId ?? ''],
+    "SELECT * FROM chat_room_keys WHERE user_id = ?",
+    [userId ?? ""],
     { throttleMs: 250 },
   );
 
   useEffect(() => {
     if (!identity || !userId) return;
-    const rows = Array.isArray(roomKeyRows) ? (roomKeyRows as RoomKeyRow[]) : [];
+    const rows = Array.isArray(roomKeyRows)
+      ? (roomKeyRows as RoomKeyRow[])
+      : [];
     if (!rows.length) return;
     let cancelled = false;
     (async () => {
@@ -243,15 +269,20 @@ export default function App() {
               v: 1 as const,
               alg: row.alg,
               aad: row.aad ?? undefined,
-              kdf: { saltB64: row.kdf_salt_b64 ?? '' },
+              kdf: { saltB64: row.kdf_salt_b64 ?? "" },
             },
             nB64: row.nonce_b64,
             cB64: row.cipher_b64,
           };
-          const key = await unwrapRoomKey(env, identity.secretKey, peerPublic, ctx);
+          const key = await unwrapRoomKey(
+            env,
+            identity.secretKey,
+            peerPublic,
+            ctx,
+          );
           resolved.push([roomId, key]);
         } catch (err) {
-          console.warn('Failed to unwrap room key', row.room_id, err);
+          console.warn("Failed to unwrap room key", row.room_id, err);
         }
       }
       if (cancelled || !resolved.length) return;
@@ -270,17 +301,17 @@ export default function App() {
 
   const roomsSql = dbReady
     ? `SELECT * FROM ${ROOMS_MIRROR_TABLE} ORDER BY updated_at DESC`
-    : 'SELECT NULL as id WHERE 1 = 0';
+    : "SELECT NULL as id WHERE 1 = 0";
 
   const roomsQuery = useQuery(roomsSql, [], { throttleMs: 200 });
 
   const roomsData = useMemo(() => {
     if (roomsQuery?.error) {
-      if (/no such table/i.test(roomsQuery.error.message ?? '')) {
+      if (/no such table/i.test(roomsQuery.error.message ?? "")) {
         return [];
       }
       // eslint-disable-next-line no-console
-      console.warn('rooms query error', roomsQuery.error);
+      console.warn("rooms query error", roomsQuery.error);
     }
     return Array.isArray(roomsQuery?.data) ? roomsQuery.data : [];
   }, [roomsQuery?.data, roomsQuery?.error]);
@@ -289,14 +320,17 @@ export default function App() {
     if (!Array.isArray(roomsData)) return [];
     return roomsData.map((row: any) => ({
       id: String(row.id),
-      name: (row.name as string) ?? 'Untitled room',
+      name: (row.name as string) ?? "Untitled room",
       topic: (row.topic as string | null) ?? null,
       updatedAt: String(row.updated_at ?? new Date().toISOString()),
     }));
   }, [roomsData]);
 
   const rooms: RoomPlain[] = useMemo(() => {
-    return [...remoteRooms].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return [...remoteRooms].sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
   }, [remoteRooms]);
 
   useEffect(() => {
@@ -316,16 +350,16 @@ export default function App() {
 
   const { data: messagesData } = useQuery(
     `SELECT * FROM ${MESSAGES_MIRROR_TABLE} WHERE room_id = ? ORDER BY sent_at ASC`,
-    [activeRoomId ?? ''],
+    [activeRoomId ?? ""],
     { throttleMs: 120 },
   );
   const remoteMessages: MessagePlain[] = useMemo(() => {
     if (!Array.isArray(messagesData)) return [];
     return (messagesData as any[]).map((row) => ({
       id: String(row.id),
-      roomId: String(row.room_id ?? activeRoomId ?? ''),
-      senderId: String(row.sender_id ?? row.user_id ?? ''),
-      text: String(row.text ?? ''),
+      roomId: String(row.room_id ?? activeRoomId ?? ""),
+      senderId: String(row.sender_id ?? row.user_id ?? ""),
+      text: String(row.text ?? ""),
       sentAt: String(row.sent_at ?? row.updated_at ?? new Date().toISOString()),
     }));
   }, [messagesData, activeRoomId]);
@@ -333,29 +367,35 @@ export default function App() {
   useEffect(() => {
     if (!remoteMessages.length) return;
     const remoteIds = new Set(remoteMessages.map((msg) => msg.id));
-    setOptimisticMessages((prev) => prev.filter((msg) => !remoteIds.has(msg.id)));
+    setOptimisticMessages((prev) =>
+      prev.filter((msg) => !remoteIds.has(msg.id)),
+    );
   }, [remoteMessages]);
 
   const messages: MessagePlain[] = useMemo(() => {
-    const activeId = activeRoomId ?? '';
+    const activeId = activeRoomId ?? "";
     const remoteIds = new Set(remoteMessages.map((msg) => msg.id));
-    const extras = optimisticMessages.filter((msg) => msg.roomId === activeId && !remoteIds.has(msg.id));
+    const extras = optimisticMessages.filter(
+      (msg) => msg.roomId === activeId && !remoteIds.has(msg.id),
+    );
     const merged = [...remoteMessages, ...extras];
-    return merged.sort((a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime());
+    return merged.sort(
+      (a, b) => new Date(a.sentAt).getTime() - new Date(b.sentAt).getTime(),
+    );
   }, [remoteMessages, optimisticMessages, activeRoomId]);
 
   const { data: membershipData } = useQuery(
-    'SELECT * FROM chat_room_members WHERE room_id = ? ORDER BY joined_at ASC',
-    [activeRoomId ?? ''],
+    "SELECT * FROM chat_room_members WHERE room_id = ? ORDER BY joined_at ASC",
+    [activeRoomId ?? ""],
     { throttleMs: 300 },
   );
   const members: MemberPlain[] = useMemo(() => {
     if (!Array.isArray(membershipData)) return [];
     return (membershipData as any[]).map((row) => ({
-      roomId: String(row.room_id ?? ''),
-      userId: String(row.user_id ?? ''),
-      invitedBy: String(row.invited_by ?? ''),
-      role: String(row.role ?? 'member'),
+      roomId: String(row.room_id ?? ""),
+      userId: String(row.user_id ?? ""),
+      invitedBy: String(row.invited_by ?? ""),
+      role: String(row.role ?? "member"),
       joinedAt: String(row.joined_at ?? new Date().toISOString()),
     }));
   }, [membershipData]);
@@ -366,7 +406,7 @@ export default function App() {
     try {
       await signInWithPassword(email, password);
     } catch (err: any) {
-      throw new Error(err?.message ?? 'Sign-in failed');
+      throw new Error(err?.message ?? "Sign-in failed");
     }
   };
 
@@ -374,7 +414,7 @@ export default function App() {
     try {
       await signUpWithPassword(email, password);
     } catch (err: any) {
-      throw new Error(err?.message ?? 'Sign-up failed');
+      throw new Error(err?.message ?? "Sign-up failed");
     }
   };
 
@@ -382,7 +422,7 @@ export default function App() {
     try {
       await sendPasswordResetEmail(email);
     } catch (err: any) {
-      throw new Error(err?.message ?? 'Failed to send reset email');
+      throw new Error(err?.message ?? "Failed to send reset email");
     }
   };
 
@@ -391,7 +431,7 @@ export default function App() {
       await updateCurrentUserPassword(password);
       setPasswordResetPending(false);
     } catch (err: any) {
-      throw new Error(err?.message ?? 'Could not update password');
+      throw new Error(err?.message ?? "Could not update password");
     }
   };
 
@@ -399,7 +439,7 @@ export default function App() {
     try {
       await signInAnonymously();
     } catch (err: any) {
-      throw new Error(err?.message ?? 'Guest sign-in failed');
+      throw new Error(err?.message ?? "Guest sign-in failed");
     }
   };
 
@@ -414,29 +454,35 @@ export default function App() {
   };
 
   const handleCreateVault = async (passphrase: string) => {
-    if (!userId) throw new Error('User not authenticated.');
+    if (!userId) throw new Error("User not authenticated.");
     try {
-      const wrapper = createPasswordCrypto({ password: passphrase, preferWebCrypto: true });
-      const dek = await ensureVaultKey(db, userId, 'password', wrapper);
+      const wrapper = createPasswordCrypto({
+        password: passphrase,
+        preferWebCrypto: true,
+      });
+      const dek = await ensureVaultKey(db, userId, "password", wrapper);
       setDataCrypto(createDEKCrypto(dek));
     } catch (err: any) {
-      throw new Error(err?.message ?? 'Failed to create vault.');
+      throw new Error(err?.message ?? "Failed to create vault.");
     }
   };
 
   const handleUnlockVault = async (passphrase: string) => {
-    if (!userId) throw new Error('User not authenticated.');
+    if (!userId) throw new Error("User not authenticated.");
     try {
-      const wrapper = createPasswordCrypto({ password: passphrase, preferWebCrypto: true });
-      const dek = await ensureVaultKey(db, userId, 'password', wrapper);
+      const wrapper = createPasswordCrypto({
+        password: passphrase,
+        preferWebCrypto: true,
+      });
+      const dek = await ensureVaultKey(db, userId, "password", wrapper);
       setDataCrypto(createDEKCrypto(dek));
     } catch (err: any) {
-      throw new Error(err?.message ?? 'Passphrase did not unlock your vault.');
+      throw new Error(err?.message ?? "Passphrase did not unlock your vault.");
     }
   };
 
   const handleCreateRoom = async (name: string, topic: string) => {
-    if (!userId || !identity) throw new Error('Vault not ready yet.');
+    if (!userId || !identity) throw new Error("Vault not ready yet.");
     const id = crypto.randomUUID();
     const roomKey = await generateDEK();
     const teardownProvisionalKey = () => {
@@ -457,23 +503,34 @@ export default function App() {
 
     try {
       const roomCrypto = createDEKCrypto(roomKey);
-      await insertEncrypted({ db, userId, crypto: roomCrypto }, CHAT_ROOMS_PAIR, {
-        id,
-        bucketId: id,
-        object: { name, topic: topic || undefined },
-      });
-      await db.execute(
-        'INSERT INTO chat_room_members (id, room_id, user_id, invited_by, role, joined_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [memberIdFor(id, userId), id, userId, userId, 'owner', nowIso],
+      await insertEncrypted(
+        { db, userId, crypto: roomCrypto },
+        CHAT_ROOMS_PAIR,
+        {
+          id,
+          bucketId: id,
+          object: { name, topic: topic || undefined },
+        },
       );
-      const envelope = await wrapRoomKey(roomKey, identity.secretKey, identity.publicKey, {
-        roomId: id,
-        senderId: userId,
-        recipientId: userId,
-      });
-      await db.execute('DELETE FROM chat_room_keys WHERE id = ?', [`${id}:${userId}`]);
       await db.execute(
-        'INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        "INSERT INTO chat_room_members (id, room_id, user_id, invited_by, role, joined_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [memberIdFor(id, userId), id, userId, userId, "owner", nowIso],
+      );
+      const envelope = await wrapRoomKey(
+        roomKey,
+        identity.secretKey,
+        identity.publicKey,
+        {
+          roomId: id,
+          senderId: userId,
+          recipientId: userId,
+        },
+      );
+      await db.execute("DELETE FROM chat_room_keys WHERE id = ?", [
+        `${id}:${userId}`,
+      ]);
+      await db.execute(
+        "INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           `${id}:${userId}`,
           id,
@@ -483,7 +540,7 @@ export default function App() {
           envelope.header.aad ?? null,
           envelope.nB64,
           envelope.cB64,
-          envelope.header.kdf.saltB64 ?? '',
+          envelope.header.kdf.saltB64 ?? "",
           nowIso,
         ],
       );
@@ -491,14 +548,14 @@ export default function App() {
       return id;
     } catch (err: any) {
       teardownProvisionalKey();
-      throw new Error(err?.message ?? 'Failed to create room.');
+      throw new Error(err?.message ?? "Failed to create room.");
     }
   };
 
   const handleSendMessage = async (roomId: string, text: string) => {
-    if (!userId) throw new Error('User not authenticated.');
+    if (!userId) throw new Error("User not authenticated.");
     const provider = roomProviders.get(roomId);
-    if (!provider) throw new Error('Room key not available yet.');
+    if (!provider) throw new Error("Room key not available yet.");
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const optimistic: MessagePlain = {
@@ -510,40 +567,62 @@ export default function App() {
     };
     setOptimisticMessages((prev) => [...prev, optimistic]);
     try {
-      await insertEncrypted({ db, userId, crypto: provider }, CHAT_MESSAGES_PAIR, {
-        id,
-        bucketId: roomId,
-        object: { text, sentAt: now, senderId: userId },
-      });
+      await insertEncrypted(
+        { db, userId, crypto: provider },
+        CHAT_MESSAGES_PAIR,
+        {
+          id,
+          bucketId: roomId,
+          object: { text, sentAt: now, senderId: userId },
+        },
+      );
     } catch (err: any) {
       setOptimisticMessages((prev) => prev.filter((msg) => msg.id !== id));
-      throw new Error(err?.message ?? 'Could not send message.');
+      throw new Error(err?.message ?? "Could not send message.");
     }
   };
 
   const handleInviteUser = async (roomId: string, targetUserId: string) => {
-    if (!userId || !identity) throw new Error('Vault not ready yet.');
-    if (targetUserId === userId) throw new Error('You are already in this room.');
+    if (!userId || !identity) throw new Error("Vault not ready yet.");
+    if (targetUserId === userId)
+      throw new Error("You are already in this room.");
     const roomKey = roomKeys.get(roomId);
-    if (!roomKey) throw new Error('Room key not available yet.');
+    if (!roomKey) throw new Error("Room key not available yet.");
     const existingRoom = rooms.find((room) => room.id === roomId);
     const peerPublic = await loadPeerPublicKey(db, targetUserId);
-    if (!peerPublic) throw new Error('Target user has not published an identity key.');
-    const envelope = await wrapRoomKey(roomKey, identity.secretKey, peerPublic, {
-      roomId,
-      senderId: userId,
-      recipientId: targetUserId,
-    });
+    if (!peerPublic)
+      throw new Error("Target user has not published an identity key.");
+    const envelope = await wrapRoomKey(
+      roomKey,
+      identity.secretKey,
+      peerPublic,
+      {
+        roomId,
+        senderId: userId,
+        recipientId: targetUserId,
+      },
+    );
     const now = new Date().toISOString();
     await db.writeTransaction(async (tx) => {
-      await tx.execute('DELETE FROM chat_room_members WHERE id = ?', [memberIdFor(roomId, targetUserId)]);
+      await tx.execute("DELETE FROM chat_room_members WHERE id = ?", [
+        memberIdFor(roomId, targetUserId),
+      ]);
       await tx.execute(
-        'INSERT INTO chat_room_members (id, room_id, user_id, invited_by, role, joined_at) VALUES (?, ?, ?, ?, ?, ?)',
-        [memberIdFor(roomId, targetUserId), roomId, targetUserId, userId, 'member', now],
+        "INSERT INTO chat_room_members (id, room_id, user_id, invited_by, role, joined_at) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          memberIdFor(roomId, targetUserId),
+          roomId,
+          targetUserId,
+          userId,
+          "member",
+          now,
+        ],
       );
-      await tx.execute('DELETE FROM chat_room_keys WHERE id = ?', [`${roomId}:${targetUserId}`]);
+      await tx.execute("DELETE FROM chat_room_keys WHERE id = ?", [
+        `${roomId}:${targetUserId}`,
+      ]);
       await tx.execute(
-        'INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        "INSERT INTO chat_room_keys (id, room_id, user_id, wrapped_by, alg, aad, nonce_b64, cipher_b64, kdf_salt_b64, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           `${roomId}:${targetUserId}`,
           roomId,
@@ -553,7 +632,7 @@ export default function App() {
           envelope.header.aad ?? null,
           envelope.nB64,
           envelope.cB64,
-          envelope.header.kdf.saltB64 ?? '',
+          envelope.header.kdf.saltB64 ?? "",
           now,
         ],
       );
@@ -563,20 +642,32 @@ export default function App() {
       const roomProvider = roomProviders.get(roomId);
       if (roomProvider) {
         try {
-          await updateEncrypted({ db, userId, crypto: roomProvider }, CHAT_ROOMS_PAIR, {
-            id: roomId,
-            bucketId: roomId,
-            object: { name: existingRoom.name, topic: existingRoom.topic ?? undefined },
-          });
+          await updateEncrypted(
+            { db, userId, crypto: roomProvider },
+            CHAT_ROOMS_PAIR,
+            {
+              id: roomId,
+              bucketId: roomId,
+              object: {
+                name: existingRoom.name,
+                topic: existingRoom.topic ?? undefined,
+              },
+            },
+          );
         } catch (err) {
-          console.warn('Failed to bump room metadata after inviting user', err);
+          console.warn("Failed to bump room metadata after inviting user", err);
         }
       }
     }
   };
 
   if (passwordResetPending) {
-    return <ResetPasswordScreen onSubmit={handleCompletePasswordReset} onCancel={handleSignOut} />;
+    return (
+      <ResetPasswordScreen
+        onSubmit={handleCompletePasswordReset}
+        onCancel={handleSignOut}
+      />
+    );
   }
 
   if (!userId) {
@@ -615,7 +706,11 @@ export default function App() {
       <div className="min-h-screen bg-slate-950/5 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="text-sm text-slate-500">Preparing identity keys…</div>
-          <button type="button" className="btn-secondary" onClick={() => handleSignOut()}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => handleSignOut()}
+          >
             Sign Out
           </button>
         </div>
@@ -633,7 +728,7 @@ export default function App() {
       onCreateRoom={handleCreateRoom}
       messages={messages}
       members={members
-        .filter((member) => member.roomId === (activeRoomId ?? ''))
+        .filter((member) => member.roomId === (activeRoomId ?? ""))
         .map(({ userId: memberId, invitedBy, role, joinedAt }) => ({
           userId: memberId,
           invitedBy,

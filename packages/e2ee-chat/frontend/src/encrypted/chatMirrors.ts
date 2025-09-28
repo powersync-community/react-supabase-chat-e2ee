@@ -1,9 +1,15 @@
-import type { CryptoProvider } from '@crypto/interface';
-import type { EncryptedRuntime, RawEncryptedRow, MirrorSubscriptionConfig } from '@crypto/sqlite';
-import { startEncryptedMirrorSubscriptions } from '@crypto/sqlite';
-import { CHAT_MESSAGES_PAIR, CHAT_ROOMS_PAIR } from './chatPairs';
+import type { CryptoProvider } from "@crypto/interface";
+import type {
+  EncryptedRuntime,
+  RawEncryptedRow,
+  MirrorSubscriptionConfig,
+} from "@crypto/sqlite";
+import { startEncryptedMirrorSubscriptions } from "@crypto/sqlite";
+import { CHAT_MESSAGES_PAIR, CHAT_ROOMS_PAIR } from "./chatPairs";
 
-type ResolveCrypto = (row: RawEncryptedRow) => Promise<CryptoProvider | null> | CryptoProvider | null;
+type ResolveCrypto = (
+  row: RawEncryptedRow,
+) => Promise<CryptoProvider | null> | CryptoProvider | null;
 
 export function startChatMirrors(
   runtime: EncryptedRuntime,
@@ -84,5 +90,7 @@ export function startChatMirrors(
     },
   ];
 
-  return startEncryptedMirrorSubscriptions(runtime, configs, { throttleMs: opts?.throttleMs });
+  return startEncryptedMirrorSubscriptions(runtime, configs, {
+    throttleMs: opts?.throttleMs,
+  });
 }

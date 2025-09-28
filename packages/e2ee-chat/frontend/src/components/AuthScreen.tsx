@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 type AuthScreenProps = {
   onSignIn: (email: string, password: string) => Promise<void>;
@@ -15,8 +15,8 @@ export default function AuthScreen({
   onGuestSignIn,
   allowGuest = false,
 }: AuthScreenProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
@@ -24,21 +24,24 @@ export default function AuthScreen({
   const [guestLoading, setGuestLoading] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  async function handle(callback: (email: string, password: string) => Promise<void>, mode: 'in' | 'up') {
+  async function handle(
+    callback: (email: string, password: string) => Promise<void>,
+    mode: "in" | "up",
+  ) {
     setError(null);
     setInfoMessage(null);
     if (!email || !password) {
-      setError('Email and password are required.');
+      setError("Email and password are required.");
       return;
     }
-    if (mode === 'in') setSigningIn(true);
+    if (mode === "in") setSigningIn(true);
     else setSigningUp(true);
     try {
       await callback(email, password);
     } catch (err: any) {
-      setError(err?.message ?? 'Authentication failed.');
+      setError(err?.message ?? "Authentication failed.");
     } finally {
-      if (mode === 'in') setSigningIn(false);
+      if (mode === "in") setSigningIn(false);
       else setSigningUp(false);
     }
   }
@@ -51,7 +54,7 @@ export default function AuthScreen({
     try {
       await onGuestSignIn();
     } catch (err: any) {
-      setError(err?.message ?? 'Guest sign-in failed.');
+      setError(err?.message ?? "Guest sign-in failed.");
     } finally {
       setGuestLoading(false);
     }
@@ -61,15 +64,17 @@ export default function AuthScreen({
     setError(null);
     setInfoMessage(null);
     if (!email) {
-      setError('Enter your email to receive a reset link.');
+      setError("Enter your email to receive a reset link.");
       return;
     }
     setResetting(true);
     try {
       await onResetPassword(email);
-      setInfoMessage('If that email exists in our system, a reset link is on its way.');
+      setInfoMessage(
+        "If that email exists in our system, a reset link is on its way.",
+      );
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to send reset email.');
+      setError(err?.message ?? "Failed to send reset email.");
     } finally {
       setResetting(false);
     }
@@ -88,18 +93,26 @@ export default function AuthScreen({
             </div>
             <ul className="space-y-3 text-sm text-slate-600">
               <li>• Zero-knowledge vaults keep message keys on your device.</li>
-              <li>• Invite collaborators with wrapped keys in a couple of clicks.</li>
-              <li>• Powered by PowerSync streaming and Supabase authentication.</li>
+              <li>
+                • Invite collaborators with wrapped keys in a couple of clicks.
+              </li>
+              <li>
+                • Powered by PowerSync streaming and Supabase authentication.
+              </li>
             </ul>
           </aside>
           <div className="w-full">
             <div className="card px-8 py-10">
               <div className="space-y-1.5 mb-6">
-                <h2 className="text-2xl font-semibold text-slate-900" data-testid="auth-heading">
+                <h2
+                  className="text-2xl font-semibold text-slate-900"
+                  data-testid="auth-heading"
+                >
                   Welcome back
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Sign in with email, or create a new encrypted workspace in seconds.
+                  Sign in with email, or create a new encrypted workspace in
+                  seconds.
                 </p>
               </div>
               {error ? (
@@ -108,7 +121,10 @@ export default function AuthScreen({
                 </div>
               ) : null}
               {infoMessage ? (
-                <div className="rounded-lg border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-700 mb-4" role="status">
+                <div
+                  className="rounded-lg border border-blue-200 bg-blue-50/80 px-4 py-3 text-sm text-blue-700 mb-4"
+                  role="status"
+                >
                   {infoMessage}
                 </div>
               ) : null}
@@ -116,7 +132,7 @@ export default function AuthScreen({
                 className="flex flex-col gap-3"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handle(onSignIn, 'in');
+                  handle(onSignIn, "in");
                 }}
               >
                 <input
@@ -142,7 +158,7 @@ export default function AuthScreen({
                     onClick={handlePasswordReset}
                     disabled={resetting || !email}
                   >
-                    {resetting ? 'Sending reset link…' : 'Forgot password?'}
+                    {resetting ? "Sending reset link…" : "Forgot password?"}
                   </button>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -151,15 +167,15 @@ export default function AuthScreen({
                     className="btn w-full"
                     disabled={!email || !password || signingIn}
                   >
-                    {signingIn ? 'Signing In…' : 'Sign In'}
+                    {signingIn ? "Signing In…" : "Sign In"}
                   </button>
                   <button
                     type="button"
                     className="btn-secondary w-full"
                     disabled={!email || !password || signingUp}
-                    onClick={() => handle(onSignUp, 'up')}
+                    onClick={() => handle(onSignUp, "up")}
                   >
-                    {signingUp ? 'Creating…' : 'Create Account'}
+                    {signingUp ? "Creating…" : "Create Account"}
                   </button>
                 </div>
               </form>
@@ -177,7 +193,7 @@ export default function AuthScreen({
                     onClick={handleGuest}
                     data-testid="guest-continue-button"
                   >
-                    {guestLoading ? 'Joining…' : 'Continue as guest'}
+                    {guestLoading ? "Joining…" : "Continue as guest"}
                   </button>
                 </div>
               ) : null}
