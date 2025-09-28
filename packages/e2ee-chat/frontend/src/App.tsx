@@ -454,6 +454,7 @@ export default function App() {
         ],
       );
       setActiveRoomId(id);
+      return id;
     } catch (err: any) {
       teardownProvisionalKey();
       throw new Error(err?.message ?? 'Failed to create room.');

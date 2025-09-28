@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bars3Icon, PaperAirplaneIcon, PlusIcon, UserGroupIcon, UserPlusIcon } from '@heroicons/react/24/solid';
+import { Bars3Icon, PaperAirplaneIcon, PlusIcon, UserGroupIcon, UserPlusIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import { Avatar } from './Avatar';
 
 type Room = {
@@ -29,7 +29,7 @@ type ChatLayoutProps = {
   rooms: Room[];
   activeRoomId: string | null;
   onSelectRoom: (roomId: string) => void;
-  onCreateRoom: (name: string, topic: string) => Promise<void>;
+  onCreateRoom: (name: string, topic: string) => Promise<string>;
   messages: Message[];
   members: Member[];
   canSendToActiveRoom: boolean;
@@ -235,7 +235,7 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
   rooms: Room[];
   activeRoomId: string | null;
   onSelectRoom: (roomId: string) => void;
-  onCreateRoom: (name: string, topic: string) => Promise<void>;
+  onCreateRoom: (name: string, topic: string) => Promise<string>;
   variant?: 'sidebar' | 'drawer';
   onClose?: () => void;
 }) {
@@ -285,10 +285,12 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
     }
     setCreating(true);
     try {
-      await onCreateRoom(trimmed, topic.trim());
+      const newRoomId = await onCreateRoom(trimmed, topic.trim());
       setName('');
       setTopic('');
       setShowCreator(false);
+      onSelectRoom(newRoomId);
+      if (isDrawer && onClose) onClose();
     } catch (err: any) {
       setError(err?.message ?? 'Failed to create room.');
     } finally {
@@ -343,40 +345,49 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
   );
 
   return (
-    <section className={`relative ${isDrawer ? 'h-full flex flex-col' : ''}`}>
-      <div className={`card ${isDrawer ? 'flex flex-col h-full' : 'space-y-4'}`}>
-        <div className="flex items-center justify-between">
+    <section className={`relative flex flex-col ${isDrawer ? 'h-full' : ''}`}>
+      <div className="card flex h-full flex-col gap-4">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold" data-testid="rooms-heading">
               Rooms ({rooms.length})
             </h2>
-            {!isDrawer ? <span className="badge">{rooms.length} total</span> : null}
           </div>
           <div className="flex items-center gap-2">
-            {isDrawer && onClose ? (
-              <button
-                type="button"
-                className="btn-secondary-sm h-8 w-8 rounded-full"
-                onClick={onClose}
-                title="Close rooms"
-              >
-                ×
-              </button>
-            ) : null}
             <button
               type="button"
-              className="btn-secondary-sm h-9 w-9 rounded-full"
-              onClick={() => setShowCreator(true)}
+              className="btn-secondary-sm h-9 rounded-full px-3 inline-flex items-center gap-2"
+              onClick={() => setShowCreator((prev) => !prev)}
               aria-haspopup="dialog"
               aria-expanded={showCreator}
               data-testid="rooms-create-button"
             >
               <PlusIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">New</span>
             </button>
+            {isDrawer && onClose ? (
+              <button
+                type="button"
+                className="btn-secondary-sm h-9 w-9 rounded-full"
+                onClick={onClose}
+                title="Close rooms"
+                aria-label="Close rooms"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
         </div>
 
-        {isDrawer ? (showCreator ? <div className="space-y-2" ref={formRef}>{creatorForm}</div> : null) : null}
+        {showCreator ? (
+          <div
+            ref={formRef}
+            className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/70 shadow-sm p-4 space-y-3"
+          >
+            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">New room</h3>
+            {creatorForm}
+          </div>
+        ) : null}
 
         <div className="flex-1 overflow-y-auto -mx-3 px-3">
           {rooms.length === 0 ? (
@@ -426,15 +437,6 @@ function RoomsPanel({ rooms, activeRoomId, onSelectRoom, onCreateRoom, variant =
         </div>
       </div>
 
-      {!isDrawer && showCreator ? (
-        <div
-          ref={formRef}
-          className="absolute right-0 top-20 z-30 w-full max-w-xs rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-300/20 p-5 space-y-3"
-        >
-          <h3 className="text-sm font-semibold text-slate-600">New room</h3>
-          {creatorForm}
-        </div>
-      ) : null}
     </section>
   );
 }
@@ -567,7 +569,7 @@ function ChatPanel({
   }
 
   return (
-    <section className="col-span-12 lg:col-span-8 xl:col-span-9 flex min-h-0">
+    <section className="h-full col-span-12 lg:col-span-8 xl:col-span-9 flex min-h-0">
       <div className="relative flex flex-col flex-1 h-full min-h-0 sm:min-h-[28rem] border border-slate-200 dark:border-slate-800/70 rounded-2xl bg-white/90 dark:bg-slate-900/80">
         <div className="p-5 border-b border-slate-200 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -581,9 +583,6 @@ function ChatPanel({
             ) : null}
             <span className="text-xs text-slate-500 whitespace-nowrap">
               Last update {formatTimestamp(room.updatedAt)}
-            </span>
-            <span className="text-xs text-slate-400 whitespace-nowrap font-mono">
-              ID {truncateUserId(room.id)}
             </span>
             <div className="relative ml-auto">
               <button
