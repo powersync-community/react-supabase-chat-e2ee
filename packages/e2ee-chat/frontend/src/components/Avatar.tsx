@@ -1,21 +1,64 @@
-function hashString(input: string): number {
-  let hash = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    hash = (hash << 5) - hash + input.charCodeAt(i);
-    hash |= 0;
+function djb2Hash(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i += 1) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
   }
-  return Math.abs(hash);
+  return hash >>> 0;
 }
 
-function hueFromString(input: string): number {
-  return hashString(input) % 360;
+function hslFromHash(hash: number): { h: number; s: number; l: number } {
+  const h = hash % 360;
+  const s = 55 + (hash % 30);
+  const l = 50;
+  return { h, s, l };
 }
 
-function initialsFromId(id: string): string {
-  const cleaned = id.replace(/[^a-z0-9]/gi, "");
-  if (cleaned.length === 0) return "??";
-  if (cleaned.length === 1) return cleaned[0]!.toUpperCase();
-  return `${cleaned[0]!.toUpperCase()}${cleaned[cleaned.length - 1]!.toUpperCase()}`;
+function IdenticonSvg({ seed, size }: { seed: string; size: number }) {
+  const hash = djb2Hash(seed || 'fallback');
+  const { h, s, l } = hslFromHash(hash);
+  const color = `hsl(${h}, ${s}%, ${l}%)`;
+  const bg = '#f3f4f6';
+  const cells = 5;
+  const cell = Math.floor(size / cells);
+  const padding = Math.max(0, Math.floor((size - cell * cells) / 2));
+
+  const bits: boolean[] = [];
+  let n = hash;
+  for (let i = 0; i < 15; i += 1) {
+    bits.push((n & 1) === 1);
+    n = (n >>> 1) ^ ((n & 1) * 0x45d9f3b);
+  }
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      role="img"
+    >
+      <rect x={0} y={0} width={size} height={size} fill={bg} rx={Math.floor(size / 6)} />
+      {Array.from({ length: cells }).map((_, y) =>
+        Array.from({ length: cells }).map((__, x) => {
+          const mirrorIndex = x < 3 ? x : 4 - x;
+          const idx = y * 3 + mirrorIndex;
+          if (!bits[idx]) return null;
+          return (
+            <rect
+              key={`${x}-${y}`}
+              x={padding + x * cell}
+              y={padding + y * cell}
+              width={cell}
+              height={cell}
+              fill={color}
+              rx={Math.max(1, Math.floor(cell / 6))}
+            />
+          );
+        }),
+      )}
+    </svg>
+  );
 }
 
 export type AvatarProps = {
@@ -26,23 +69,15 @@ export type AvatarProps = {
 };
 
 export function Avatar({ userId, size = 40, className }: AvatarProps) {
-  const hue = hueFromString(userId);
-  const bg = `hsla(${hue}, 80%, 70%, 1)`;
-  const text = `hsla(${(hue + 200) % 360}, 40%, 25%, 1)`;
-  const initials = initialsFromId(userId);
-
   return (
     <div
-      className={`inline-flex items-center justify-center rounded-full font-semibold select-none shadow-sm ${className ?? ""}`}
-      style={{
-        width: size,
-        height: size,
-        background: bg,
-        color: text,
-      }}
+      className={`inline-flex items-center justify-center rounded-full overflow-hidden bg-transparent shadow-sm select-none ${
+        className ?? ''
+      }`}
+      style={{ width: size, height: size }}
       aria-hidden="true"
     >
-      {initials}
+      <IdenticonSvg seed={userId} size={size} />
     </div>
   );
 }

@@ -470,22 +470,15 @@ function RoomsPanel({
                       data-room-id={room.id}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <Avatar
-                            userId={room.id}
-                            size={34}
-                            className="shrink-0"
-                          />
-                          <div>
-                            <p className="font-medium leading-tight line-clamp-2">
-                              {room.name}
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium leading-tight line-clamp-2">
+                            {room.name}
+                          </p>
+                          {room.topic ? (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
+                              {room.topic}
                             </p>
-                            {room.topic ? (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
-                                {room.topic}
-                              </p>
-                            ) : null}
-                          </div>
+                          ) : null}
                         </div>
                         <span className="text-xs text-slate-400 whitespace-nowrap">
                           {formatTimestamp(room.updatedAt)}
