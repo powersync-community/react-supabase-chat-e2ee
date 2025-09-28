@@ -2,6 +2,13 @@
 
 An end-to-end encrypted chat demo that reuses the shared crypto modules in this monorepo. The app mirrors the Todo vault experience: users unlock a per-device vault key with a passphrase or passkey, derive an X25519 identity keypair, and then distribute room keys via ECDH so every conversation is encrypted with its own symmetric key.
 
+## Overview
+
+- Multi-room chat with per-room encryption and live updates via PowerSync.
+- Invite Supabase users (including anonymous guests) by sharing their published identity key.
+- Local vault unlock flow using passphrase or WebAuthn passkey with rekey support.
+- Deterministic encrypted mirrors that project decrypted room metadata and messages for React components.
+
 ## Quickstart
 
 ```sh
@@ -19,6 +26,21 @@ VITE_POWERSYNC_URL=<powersync-endpoint>
 ```
 
 Run the frontend at the printed URL once the dev server starts.
+
+## Encryption & privacy model
+
+- **Client-encrypted data**
+  - `chat_rooms` ciphertext stores room name/topic/etc.; only minimal identifiers stay plaintext.
+  - `chat_messages` ciphertext wraps message bodies; sender identity and timestamps remain as metadata.
+  - `chat_room_keys` rows hold the wrapped Data Encryption Key (DEK) per member; only the recipient can unwrap the payload.
+  - `chat_identity_private_keys` and `chat_e2ee_keys` contain the user’s sealed vault material.
+- **Plaintext metadata (required for access control & sync)**
+  - `chat_room_members` keeps a `room_id` → `user_id` link so Supabase RLS can gate reads/writes; the frontend now syncs every member row in a room but nothing is decrypted server-side.
+  - `chat_identity_public_keys` exposes each user’s X25519 public key so peers can encrypt invites.
+  - `chat_messages.bucket_id`, `chat_rooms.bucket_id`, and timestamps allow ordering and fan-out without revealing message content.
+- **Local mirrors**
+  - `chatMirrors.ts` watches encrypted tables, decrypts with the user’s vault + room keys, and writes plaintext mirrors (`chat_rooms_plain`, `chat_messages_plain`) to the PowerSync client DB for querying.
+  - No decrypted content leaves the device; uploads use Supabase RPC with ciphertext rows only.
 
 ## How the vault works
 
@@ -46,23 +68,6 @@ pnpm --filter @app/chat-e2ee migrate
 ```
 
 This snapshots the current schema into `infra/supabase/migrations/<timestamp>_init.sql` and runs `supabase db push` so the remote project picks up the change. If you only need to reapply the existing migrations without creating a new file, use `pnpm --filter @app/chat-e2ee supabase:db:push`.
-
-## Frontend structure
-
-```
-frontend/src/
-├── App.tsx                    # vault flow, identity management, chat UI
-├── crypto/
-│   ├── identity.ts            # X25519 keypair generation & storage
-│   └── roomKeys.ts            # ECDH wrapping helpers
-├── encrypted/
-│   ├── chatPairs.ts           # encrypted-table ↔ mirror configs
-│   └── chatMirrors.ts         # mirror watcher with per-room crypto resolver
-├── powersync/SystemProvider.tsx # PowerSync bootstrap + schema install
-└── utils/                     # Supabase helpers, vault keyring utilities
-```
-
-The UI is split across small components (`AuthScreen`, `VaultScreen`, `ChatLayout`, `RoomsPanel`, `ChatPanel`) so each step of the flow is easy to reason about.
 
 ## Next steps
 
