@@ -53,7 +53,7 @@ jobs:
           echo "VITE_BASE_PATH=$base" >> "$GITHUB_ENV"
 
       - name: Build chat app
-        run: pnpm --filter @app/chat-e2ee build
+        run: pnpm run build:packages && pnpm --filter @app/chat-e2ee build
         env:
           GITHUB_PAGES: true
 
