@@ -54,6 +54,7 @@ test('two guests can exchange messages in real time', async ({ browser }) => {
     await bootstrapGuest(pageB, passphraseB);
 
     // Guest A creates a room.
+    await pageA.getByTestId('rooms-create-button').click();
     const roomNameInputA = pageA.getByTestId('room-name-input');
     await expect(roomNameInputA).toBeEnabled({ timeout: 30_000 });
     await roomNameInputA.fill(roomName);
@@ -70,12 +71,15 @@ test('two guests can exchange messages in real time', async ({ browser }) => {
     await expect(pageA.getByTestId('message-text').filter({ hasText: firstMessage })).toBeVisible({ timeout: 30_000 });
 
     // Capture Guest B's user ID from the header.
+    await pageB.getByTestId('user-menu-button').click();
     const guestBId = (await pageB.getByTestId('user-id').textContent())?.trim();
+    await pageB.getByTestId('user-menu-button').click();
     if (!guestBId) {
       throw new Error('Failed to read guest B user ID');
     }
 
     // Guest A invites Guest B by ID.
+    await pageA.getByTestId('members-popover-button').click();
     const inviteInput = pageA.getByTestId('invite-user-input');
     const inviteButton = pageA.getByTestId('invite-user-button');
     const inviteErrorMessage = pageA.getByText('Target user has not published an identity key.', { exact: true });

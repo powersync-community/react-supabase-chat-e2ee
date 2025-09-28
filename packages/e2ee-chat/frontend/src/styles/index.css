@@ -8,28 +8,28 @@ body {
 }
 
 .btn {
-  @apply inline-flex items-center gap-2 rounded-md px-3.5 py-2.5 bg-blue-600 text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition;
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2.5 bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition;
 }
 .btn-sm {
-  @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm bg-indigo-500 text-white shadow-sm hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition;
 }
 .btn-secondary {
-  @apply inline-flex items-center gap-2 rounded-md px-3.5 py-2.5 bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition;
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2.5 bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition;
 }
 .btn-secondary-sm {
-  @apply inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition;
+  @apply inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition;
 }
 .input {
-  @apply rounded-md border px-3 py-2 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition;
+  @apply rounded-md border px-3 py-2 bg-white/95 dark:bg-slate-900/70 border-gray-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400/60 transition;
 }
 .input-sm {
-  @apply rounded-md border px-2.5 py-1.5 text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition;
+  @apply rounded-md border px-2.5 py-1.5 text-sm bg-white/95 dark:bg-slate-900/70 border-gray-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/60 focus:border-indigo-400/60 transition;
 }
 .card {
-  @apply rounded-xl border p-5 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm;
+  @apply rounded-2xl border p-6 bg-white/95 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 shadow-lg shadow-slate-900/5 dark:shadow-black/30;
 }
 .badge {
-  @apply inline-flex items-center gap-1 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200 px-2 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-200 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
 }
 .muted {
   @apply text-sm text-gray-500;

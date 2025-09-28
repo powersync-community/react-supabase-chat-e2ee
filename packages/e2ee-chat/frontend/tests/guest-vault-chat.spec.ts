@@ -33,6 +33,7 @@ test('guest can create a vault and start a chat', async ({ page }) => {
   await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('rooms-heading')).toBeVisible({ timeout: 15_000 });
 
+  await page.getByTestId('rooms-create-button').click();
   const roomNameInput = page.getByTestId('room-name-input');
   await expect(roomNameInput).toBeEnabled({ timeout: 25_000 });
   await roomNameInput.fill(roomName);
@@ -58,6 +59,7 @@ test('guest can create a vault and start a chat', async ({ page }) => {
   const sentByYou = page.getByTestId('message-sender').filter({ hasText: 'You' });
   await expect(sentByYou).toBeVisible({ timeout: 10_000 });
 
+  await page.getByTestId('user-menu-button').click();
   const signOutButton = page.getByTestId('chat-sign-out-button');
   await signOutButton.click();
 

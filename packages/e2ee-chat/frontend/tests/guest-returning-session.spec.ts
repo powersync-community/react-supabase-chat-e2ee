@@ -50,11 +50,14 @@ test('guest reconnecting with same passphrase sees existing room', async ({ page
   await page.getByTestId('vault-submit-button').click();
   await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 30_000 });
 
+  await page.getByTestId('user-menu-button').click();
   const initialUserId = (await page.getByTestId('user-id').textContent())?.trim();
+  await page.getByTestId('user-menu-button').click();
   if (!initialUserId) {
     throw new Error('Failed to read initial user ID');
   }
 
+  await page.getByTestId('rooms-create-button').click();
   const roomNameInput = page.getByTestId('room-name-input');
   await expect(roomNameInput).toBeEnabled({ timeout: 25_000 });
   await roomNameInput.fill(roomName);
@@ -74,12 +77,19 @@ test('guest reconnecting with same passphrase sees existing room', async ({ page
   await page.getByTestId('vault-submit-button').click();
   await expect(page.getByTestId('app-heading')).toBeVisible({ timeout: 30_000 });
 
+  await page.getByTestId('user-menu-button').click();
   const postReloadUserId = (await page.getByTestId('user-id').textContent())?.trim();
+  await page.getByTestId('user-menu-button').click();
   await expect(postReloadUserId).toBe(initialUserId);
 
   await expect(page.getByTestId('room-list-item').filter({ hasText: roomName })).toBeVisible({ timeout: 30_000 });
   const roomTile = page.getByTestId('room-list-item').filter({ hasText: roomName });
   await roomTile.click();
   await expect(page.getByTestId('active-room-heading')).toHaveText(roomName, { timeout: 30_000 });
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="message-text"]') !== null,
+    undefined,
+    { timeout: 60_000 },
+  );
   await expect(page.getByTestId('message-text').filter({ hasText: messageText })).toBeVisible({ timeout: 30_000 });
 });
