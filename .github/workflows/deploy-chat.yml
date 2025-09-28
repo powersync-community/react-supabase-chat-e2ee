@@ -1,0 +1,75 @@
+name: Deploy Chat App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Determine Pages URL
+        id: pages_meta
+        run: |
+          if [ "${{ github.event.repository.name }}" = "${{ github.repository_owner }}.github.io" ]; then
+            url="https://${{ github.repository_owner }}.github.io/"
+            base="/"
+          else
+            url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+            base="/${{ github.event.repository.name }}/"
+          fi
+          echo "page_url=$url" >> "$GITHUB_OUTPUT"
+          echo "base_path=$base" >> "$GITHUB_OUTPUT"
+          echo "VITE_SUPABASE_RESET_REDIRECT_URL=$url" >> "$GITHUB_ENV"
+          echo "VITE_BASE_PATH=$base" >> "$GITHUB_ENV"
+
+      - name: Build chat app
+        run: pnpm --filter @app/chat-e2ee build
+        env:
+          GITHUB_PAGES: true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/e2ee-chat/frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
