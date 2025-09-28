@@ -1,5 +1,5 @@
 {
-  "name": "apps-e2ee",
+  "name": "powersync-apps-e2ee",
   "private": true,
   "workspaces": [
     "packages/crypto/*",
