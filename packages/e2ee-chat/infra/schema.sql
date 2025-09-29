@@ -106,6 +106,36 @@ create unique index if not exists idx_chat_room_members_room_user on public.chat
 create index if not exists idx_chat_room_members_user on public.chat_room_members(user_id);
 create index if not exists idx_chat_room_members_room on public.chat_room_members(room_id);
 
+-- Encrypted per-member room key wraps: each user gets a copy of the room DEK encrypted to them.
+create table if not exists public.chat_room_keys (
+  id text primary key,
+  room_id text not null references public.chat_rooms(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  wrapped_by uuid null references auth.users(id) on delete set null,
+  alg text not null,
+  aad text null,
+  nonce_b64 text not null,
+  cipher_b64 text not null,
+  kdf_salt_b64 text not null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists idx_chat_room_keys_user_room on public.chat_room_keys(room_id, user_id);
+create index if not exists idx_chat_room_keys_user on public.chat_room_keys(user_id);
+
+alter table public.chat_room_keys enable row level security;
+
+drop policy if exists "Users read own room keys" on public.chat_room_keys;
+create policy "Users read own room keys"
+  on public.chat_room_keys for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users manage own room keys" on public.chat_room_keys;
+create policy "Users manage own room keys"
+  on public.chat_room_keys for all
+  using (auth.uid() = wrapped_by or auth.uid() = user_id)
+  with check (auth.uid() = wrapped_by or auth.uid() = user_id);
+
 alter table public.chat_room_members enable row level security;
 
 drop policy if exists "Members view membership" on public.chat_room_members;
@@ -163,36 +193,6 @@ create policy "Members can write rooms"
          and m.user_id = auth.uid()
     )
   );
-
--- Encrypted per-member room key wraps: each user gets a copy of the room DEK encrypted to them.
-create table if not exists public.chat_room_keys (
-  id text primary key,
-  room_id text not null references public.chat_rooms(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  wrapped_by uuid null references auth.users(id) on delete set null,
-  alg text not null,
-  aad text null,
-  nonce_b64 text not null,
-  cipher_b64 text not null,
-  kdf_salt_b64 text not null,
-  created_at timestamptz not null default now()
-);
-
-create unique index if not exists idx_chat_room_keys_user_room on public.chat_room_keys(room_id, user_id);
-create index if not exists idx_chat_room_keys_user on public.chat_room_keys(user_id);
-
-alter table public.chat_room_keys enable row level security;
-
-drop policy if exists "Users read own room keys" on public.chat_room_keys;
-create policy "Users read own room keys"
-  on public.chat_room_keys for select
-  using (auth.uid() = user_id);
-
-drop policy if exists "Users manage own room keys" on public.chat_room_keys;
-create policy "Users manage own room keys"
-  on public.chat_room_keys for all
-  using (auth.uid() = wrapped_by or auth.uid() = user_id)
-  with check (auth.uid() = wrapped_by or auth.uid() = user_id);
 
 drop policy if exists "Members view room membership" on public.chat_room_members;
 create policy "Members view room membership"

@@ -7,7 +7,7 @@
     "packages/e2ee-chat/frontend"
   ],
   "scripts": {
-    "dev": "pnpm --filter @app/todo-e2ee dev",
+    "dev": "pnpm --filter @app/chat-e2ee dev",
     "build:packages": "pnpm run --filter {./packages/crypto/**} -r build",
     "build": "pnpm run --filter {./packages/**} -r build",
     "test": "pnpm run --filter {./packages/**} -r test",
