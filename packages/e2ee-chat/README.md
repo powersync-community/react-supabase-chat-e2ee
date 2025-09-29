@@ -71,6 +71,16 @@ If you ever need a fresh database during development, run `pnpm --filter @app/ch
   - `chatMirrors.ts` watches encrypted tables, decrypts with the user’s vault + room keys, and writes plaintext mirrors (`chat_rooms_plain`, `chat_messages_plain`) to the PowerSync client DB for querying.
   - No decrypted content leaves the device; uploads use Supabase RPC with ciphertext rows only.
 
+## What is and isn’t protected
+
+- **Summary**
+  - Protected: Room titles, descriptions, and message contents are encrypted client-side before they leave the device, so Supabase and PowerSync cannot read them.
+  - Not protected: Room membership, sender identifiers, and message timestamps stay in plaintext so the backend can authorize access and order events.
+- **Details**
+  - Ciphertext columns (`chat_rooms.ciphertext`, `chat_messages.ciphertext`) and wrapped keys (`chat_room_keys`, `chat_identity_private_keys`, `chat_e2ee_keys`) keep all room metadata, message bodies, and vault material confidential.
+  - Plaintext metadata (`chat_room_members`, bucket IDs and timestamps in `chat_messages` / `chat_rooms`, `chat_identity_public_keys`) remains visible to enforce RLS, drive sync, and let peers discover public keys.
+  - Operational signals—such as when rooms change, which user triggered an update, and high-level traffic timing—are still observable even though the payloads are encrypted.
+
 ## How the vault works
 
 - **Vault KEK** – Users unlock a per-device vault key (`ensureVaultKey`) with a passphrase or passkey. That key never leaves the device; everything below is wrapped with it.
