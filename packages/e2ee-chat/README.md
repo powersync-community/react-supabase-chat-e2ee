@@ -27,6 +27,24 @@ VITE_POWERSYNC_URL=<powersync-endpoint>
 
 Run the frontend at the printed URL once the dev server starts.
 
+## Supabase setup
+
+1. The repo already bundles the Supabase CLI, so from the chat frontend package run the helper scripts (they call `pnpx supabase` under the hood). Sign in when prompted the first time so the CLI can push to your project:
+   ```sh
+   pnpm --filter @app/chat-e2ee supabase:init   # generates config in infra/supabase
+   pnpm --filter @app/chat-e2ee supabase:link   # choose your Supabase project reference
+   ```
+2. Push the schema in `infra/schema.sql` to your project. For a clean push run either:
+   ```sh
+   pnpm --filter @app/chat-e2ee migrate         # snapshot schema + push
+   # or when no new migration file is required
+   pnpm --filter @app/chat-e2ee supabase:db:push
+   ```
+3. Copy `infra/powersync/sync_rules.yaml` into your PowerSync dashboard so the client can sync the encrypted tables.  
+4. Populate `frontend/.env.local` with the Supabase URL and anon key from the dashboard (see Quickstart above).
+
+If you ever need a fresh database during development, run `pnpm --filter @app/chat-e2ee supabase:reset` to drop and reapply the schema locally. To repair discrepancies between your migrations and the remote database, use the Supabase CLI’s `migration repair` command as documented by Supabase.
+
 ## Encryption & privacy model
 
 - **Client-encrypted data**
