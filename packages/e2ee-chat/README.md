@@ -43,7 +43,7 @@ Run the frontend at the printed URL once the dev server starts.
 3. Copy `infra/powersync/sync_rules.yaml` into your PowerSync dashboard so the client can sync the encrypted tables.  
 4. Populate `frontend/.env.local` with the Supabase URL and anon key from the dashboard (see Quickstart above).
 
-If you ever need a fresh database during development, run `pnpm --filter @app/chat-e2ee supabase:reset` to drop and reapply the schema locally. To repair discrepancies between your migrations and the remote database, use the Supabase CLI’s `migration repair` command as documented by Supabase.
+If you ever need a fresh database during development, run `pnpm --filter @app/chat-e2ee migrate:reset` to drop and reapply the schema locally. To repair discrepancies between your migrations and the remote database, use the Supabase CLI’s `migration repair` command as documented by Supabase.
 
 ## Encryption & privacy model
 

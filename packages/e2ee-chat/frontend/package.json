@@ -23,7 +23,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@crypto/sqlite": "workspace:*",
+    "@crypto/sqlite": "workspace:*",  
     "@crypto/interface": "workspace:*",
     "@crypto/password": "workspace:*",
     "@crypto/webauthn": "workspace:*",
