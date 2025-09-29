@@ -40,8 +40,19 @@ Run the frontend at the printed URL once the dev server starts.
    # or when no new migration file is required
    pnpm --filter @app/chat-e2ee supabase:db:push
    ```
-3. Copy `infra/powersync/sync_rules.yaml` into your PowerSync dashboard so the client can sync the encrypted tables.  
-4. Populate `frontend/.env.local` with the Supabase URL and anon key from the dashboard (see Quickstart above).
+3. In the Supabase SQL editor, run the statements from `infra/roles.sql` (or paste them directly) to create the PowerSync database role and publication. PowerSync expects the publication to be named `powersync`:
+   ```sql
+   -- Create a role/user with replication privileges for PowerSync
+   CREATE ROLE powersync_role WITH REPLICATION BYPASSRLS LOGIN PASSWORD 'REPLACE_WITH_STRONG_PASSWORD';
+   GRANT SELECT ON ALL TABLES IN SCHEMA public TO powersync_role;
+   ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO powersync_role;
+
+   -- Create a publication to replicate tables.
+   -- You can scope this to specific tables if needed, but the publication name must stay "powersync".
+   CREATE PUBLICATION powersync FOR ALL TABLES;
+   ```
+4. Copy `infra/powersync/sync_rules.yaml` into your PowerSync dashboard so the client can sync the encrypted tables.  
+5. Populate `frontend/.env.local` with the Supabase URL and anon key from the dashboard (see Quickstart above).
 
 If you ever need a fresh database during development, run `pnpm --filter @app/chat-e2ee migrate:reset` to drop and reapply the schema locally. To repair discrepancies between your migrations and the remote database, use the Supabase CLI’s `migration repair` command as documented by Supabase.
 
