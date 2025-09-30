@@ -1,16 +1,12 @@
-# PowerSync E2EE Monorepo
+# PowerSync E2EE Chat Monorepo
 
-This repo contains demo applications and shared libraries for building end-to-end encrypted experiences on top of PowerSync and Supabase.
+This repository focuses on the end-to-end encrypted chat demo plus the shared crypto libraries it depends on. Use it as a reference implementation for building client-encrypted PowerSync projects backed by Supabase.
 
-## Applications
+## Application
 
 - [packages/e2ee-chat](packages/e2ee-chat) — End-to-end encrypted group chat with guest access, room invites, and local vault unlock flows. See the package README for setup instructions and an in-depth encryption/privacy overview.
 
 ![Screenshot of E2EE Chat](packages/e2ee-chat/screenshot.png)
-
-- [packages/todo-raw-table](packages/todo-raw-table) — Todo list app showcasing encrypted raw-table storage paired with decrypted mirrors for UI queries.
-
-![Screenshot of Todo (raw-table + encrypted mirrors)](packages/todo-raw-table/screenshot.png)
 
 ## Crypto packages
 
@@ -19,4 +15,4 @@ This repo contains demo applications and shared libraries for building end-to-en
 - [packages/crypto/password](packages/crypto/password) — Password-based crypto provider (PBKDF2 by default) implementing the `CryptoProvider` interface for wrapping/unwrapping DEKs.
 - [packages/crypto/webauthn](packages/crypto/webauthn) — WebAuthn-based crypto provider using PRF/hmac-secret extensions to derive a stable secret per credential (wrap/unwrap DEKs using passkeys).
 
-Each application consumes these packages to keep ciphertext opaque to the PowerSync backend while presenting decrypted mirrors locally for the user interface.
+Each module keeps ciphertext opaque to the PowerSync backend while presenting decrypted mirrors locally for the user interface.

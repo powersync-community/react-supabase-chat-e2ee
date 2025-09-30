@@ -1,6 +1,6 @@
 # PowerSync E2EE Chat
 
-An end-to-end encrypted chat demo that reuses the shared crypto modules in this monorepo. The app mirrors the Todo vault experience: users unlock a per-device vault key with a passphrase or passkey, derive an X25519 identity keypair, and then distribute room keys via ECDH so every conversation is encrypted with its own symmetric key.
+An end-to-end encrypted chat demo that reuses the shared crypto modules in this monorepo. Users unlock a per-device vault key with a passphrase or passkey, derive an X25519 identity keypair, and then distribute room keys via ECDH so every conversation is encrypted with its own symmetric key.
 
 ## Overview
 
@@ -31,7 +31,7 @@ Run the frontend at the printed URL once the dev server starts.
 
 1. The repo already bundles the Supabase CLI, so from the chat frontend package run the helper scripts (they call `pnpx supabase` under the hood). Sign in when prompted the first time so the CLI can push to your project:
    ```sh
-   pnpm --filter @app/chat-e2ee supabase:init   # generates config in infra/supabase
+   pnpm --filter @app/chat-e2ee supabase:init   # generates config in supabase
    pnpm --filter @app/chat-e2ee supabase:link   # choose your Supabase project reference
    ```
 2. Push the schema in `infra/schema.sql` to your project. For a clean push run either:
@@ -106,7 +106,7 @@ After editing `infra/schema.sql`, generate and push a fresh migration:
 pnpm --filter @app/chat-e2ee migrate
 ```
 
-This snapshots the current schema into `infra/supabase/migrations/<timestamp>_init.sql` and runs `supabase db push` so the remote project picks up the change. If you only need to reapply the existing migrations without creating a new file, use `pnpm --filter @app/chat-e2ee supabase:db:push`.
+This snapshots the current schema into `supabase/migrations/<timestamp>_init.sql` and runs `supabase db push` so the remote project picks up the change. If you only need to reapply the existing migrations without creating a new file, use `pnpm --filter @app/chat-e2ee supabase:db:push`.
 
 ## Next steps
 

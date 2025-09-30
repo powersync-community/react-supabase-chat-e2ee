@@ -43,23 +43,23 @@ Mirror table has: `id`, `user_id`, `bucket_id`, `updated_at`, plus your declared
 ```ts
 import type { EncryptedPairConfig } from "@crypto/sqlite";
 
-const TODOS_PAIR: EncryptedPairConfig<{ text: string; completed: boolean }> = {
-  name: "todos",
-  encryptedTable: "raw_items",
-  mirrorTable: "raw_items_plain",
+const CHAT_MESSAGES_PAIR: EncryptedPairConfig<{ content: string; isEdited: boolean }> = {
+  name: "chat_messages",
+  encryptedTable: "chat_messages_cipher",
+  mirrorTable: "chat_messages_plain",
   mirrorColumns: [
-    { name: "text", type: "TEXT", notNull: true, defaultExpr: "''" },
-    { name: "completed", type: "INTEGER", notNull: true, defaultExpr: "0" }
+    { name: "content", type: "TEXT", notNull: true, defaultExpr: "''" },
+    { name: "is_edited", type: "INTEGER", notNull: true, defaultExpr: "0" }
   ],
   // Convert decrypted bytes -> mirror columns
   parsePlain: ({ plaintext }) => {
     const obj = JSON.parse(new TextDecoder().decode(plaintext));
-    return { text: obj.text ?? "", completed: obj.completed ? 1 : 0 };
+    return { content: obj.content ?? "", is_edited: obj.isEdited ? 1 : 0 };
   },
   // Optional: serialize domain object -> bytes (defaults to JSON if omitted)
   serializePlain: (obj) => ({
     plaintext: new TextEncoder().encode(JSON.stringify(obj)),
-    aad: "todo-v1"
+    aad: "chat-message-v1"
   })
 };
 ```
@@ -69,7 +69,7 @@ const TODOS_PAIR: EncryptedPairConfig<{ text: string; completed: boolean }> = {
 ```ts
 import { ensurePairsDDL } from "@crypto/sqlite";
 
-await ensurePairsDDL(db, [TODOS_PAIR]);
+await ensurePairsDDL(db, [CHAT_MESSAGES_PAIR]);
 ```
 
 This creates both the encrypted and mirror tables and installs triggers that write to `powersync_crud` on insert/update/delete.
@@ -79,7 +79,7 @@ This creates both the encrypted and mirror tables and installs triggers that wri
 ```ts
 import { installPairsOnSchema } from "@crypto/sqlite";
 
-installPairsOnSchema(schema, [TODOS_PAIR]);
+installPairsOnSchema(schema, [CHAT_MESSAGES_PAIR]);
 ```
 
 ### 4) Start the mirror replicator
@@ -87,7 +87,7 @@ installPairsOnSchema(schema, [TODOS_PAIR]);
 ```ts
 import { startEncryptedMirrors } from "@crypto/sqlite";
 
-const stop = startEncryptedMirrors({ db, userId, crypto }, [TODOS_PAIR], { throttleMs: 150 });
+const stop = startEncryptedMirrors({ db, userId, crypto }, [CHAT_MESSAGES_PAIR], { throttleMs: 150 });
 // call stop() to dispose
 ```
 
@@ -100,17 +100,17 @@ import { insertEncrypted, updateEncrypted, deleteEncrypted } from "@crypto/sqlit
 
 await insertEncrypted(
   { db, userId, crypto },
-  TODOS_PAIR,
-  { id: "a1", bucketId: null, object: { text: "Buy milk", completed: false } }
+  CHAT_MESSAGES_PAIR,
+  { id: "m1", bucketId: "room-1", object: { content: "Hello", isEdited: false } }
 );
 
 await updateEncrypted(
   { db, userId, crypto },
-  TODOS_PAIR,
-  { id: "a1", object: { text: "Buy oat milk", completed: true } }
+  CHAT_MESSAGES_PAIR,
+  { id: "m1", bucketId: "room-1", object: { content: "Hello again", isEdited: true } }
 );
 
-await deleteEncrypted({ db, userId, crypto }, TODOS_PAIR, { id: "a1" });
+await deleteEncrypted({ db, userId, crypto }, CHAT_MESSAGES_PAIR, { id: "m1" });
 ```
 
 ### 6) Query from React
@@ -120,13 +120,13 @@ import { useQuery } from "@powersync/react";
 
 const { data, isLoading, error } = useQuery(
   `
-  SELECT id, user_id, bucket_id, updated_at, text, completed
-    FROM raw_items_plain
+  SELECT id, user_id, bucket_id, updated_at, content, is_edited
+    FROM chat_messages_plain
    WHERE user_id = ?
-     AND bucket_id IS NULL
+     AND bucket_id = ?
    ORDER BY updated_at DESC
   `,
-  [userId]
+  [userId, roomId]
 );
 ```
 

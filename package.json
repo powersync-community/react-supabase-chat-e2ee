@@ -1,9 +1,8 @@
 {
-  "name": "powersync-apps-e2ee",
+  "name": "powersync-e2ee-chat",
   "private": true,
   "workspaces": [
     "packages/crypto/*",
-    "packages/todo-raw-table/frontend",
     "packages/e2ee-chat/frontend"
   ],
   "scripts": {

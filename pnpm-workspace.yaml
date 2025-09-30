@@ -1,4 +1,3 @@
 packages:
   - 'packages/crypto/*'
-  - 'packages/todo-raw-table/frontend'
   - 'packages/e2ee-chat/frontend'
