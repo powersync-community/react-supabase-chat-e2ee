@@ -145,6 +145,8 @@ export default function App() {
     [],
   );
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [pendingRoomSelection, setPendingRoomSelection] =
+    useState<string | null>(null);
   const [mirrorsStarted, setMirrorsStarted] = useState(false);
   const [passwordResetPending, setPasswordResetPending] = useState(false);
   const [guestSupported, setGuestSupported] = useState(() =>
@@ -335,6 +337,9 @@ export default function App() {
 
   useEffect(() => {
     if (!rooms.length) {
+      if (pendingRoomSelection) {
+        return;
+      }
       if (activeRoomId && roomKeys.has(activeRoomId)) {
         return;
       }
@@ -343,10 +348,25 @@ export default function App() {
       }
       return;
     }
+
+    if (pendingRoomSelection) {
+      const pendingExists = rooms.some(
+        (room) => room.id === pendingRoomSelection,
+      );
+      if (!pendingExists) {
+        return;
+      }
+      if (activeRoomId !== pendingRoomSelection) {
+        setActiveRoomId(pendingRoomSelection);
+      }
+      setPendingRoomSelection(null);
+      return;
+    }
+
     if (!activeRoomId || !rooms.some((room) => room.id === activeRoomId)) {
       setActiveRoomId(rooms[0].id);
     }
-  }, [rooms, activeRoomId, roomKeys]);
+  }, [rooms, activeRoomId, roomKeys, pendingRoomSelection]);
 
   const { data: messagesData } = useQuery(
     `SELECT * FROM ${MESSAGES_MIRROR_TABLE} WHERE room_id = ? ORDER BY sent_at ASC`,
@@ -450,6 +470,7 @@ export default function App() {
     setRoomKeys(new Map());
     setOptimisticMessages([]);
     setActiveRoomId(null);
+    setPendingRoomSelection(null);
     setPasswordResetPending(false);
   };
 
@@ -501,6 +522,8 @@ export default function App() {
       return next;
     });
 
+    setPendingRoomSelection(id);
+
     try {
       const roomCrypto = createDEKCrypto(roomKey);
       await insertEncrypted(
@@ -548,6 +571,7 @@ export default function App() {
       return id;
     } catch (err: any) {
       teardownProvisionalKey();
+      setPendingRoomSelection(null);
       throw new Error(err?.message ?? "Failed to create room.");
     }
   };
@@ -718,13 +742,19 @@ export default function App() {
     );
   }
 
+  const handleSelectRoom = (roomId: string) => {
+    const exists = rooms.some((room) => room.id === roomId);
+    setPendingRoomSelection(exists ? null : roomId);
+    setActiveRoomId(roomId);
+  };
+
   return (
     <ChatLayout
       userId={userId}
       mirrorsStarted={mirrorsStarted}
       rooms={rooms}
       activeRoomId={activeRoomId}
-      onSelectRoom={setActiveRoomId}
+      onSelectRoom={handleSelectRoom}
       onCreateRoom={handleCreateRoom}
       messages={messages}
       members={members

@@ -10,6 +10,7 @@
     "build:packages": "pnpm run --filter {./packages/crypto/**} -r build",
     "build": "pnpm run --filter {./packages/**} -r build",
     "test": "pnpm run --filter {./packages/**} -r test",
+    "test:e2e": "pnpm --filter @app/chat-e2ee test:e2e",
     "typecheck": "pnpm run --filter {./packages/**} -r typecheck"
   },
   "devDependencies": {

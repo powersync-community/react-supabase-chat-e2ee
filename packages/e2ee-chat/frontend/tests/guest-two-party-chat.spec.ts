@@ -219,7 +219,6 @@ test("two guests can exchange messages in real time", async ({ browser }) => {
       if (!Array.isArray(rows)) return -1;
       return rows.length;
     }, roomId);
-    console.log("Owner membership rows", membershipRowCount);
 
     // Guest B should receive the first message.
     const messageFromAOnB = pageB
