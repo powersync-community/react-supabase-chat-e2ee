@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { usePowerSync, useQuery } from "@powersync/react";
+import { usePowerSync, useQuery, useStatus } from "@powersync/react";
 import { createPasswordCrypto } from "@crypto/password";
 import {
   createDEKCrypto,
@@ -74,12 +74,20 @@ function useSupabaseUser(): {
 }
 
 function useVaultProviders(userId: string | null) {
-  const { data } = useQuery(
+  const { data, isLoading } = useQuery(
     "SELECT provider FROM chat_e2ee_keys WHERE user_id = ?",
     [userId ?? ""],
-    { throttleMs: 150 },
+    {
+      throttleMs: 150,
+      streams: userId
+        ? [{ ...USER_VAULT_KEYS_STREAM, waitForStream: true }]
+        : undefined,
+    },
   );
   return useMemo(() => {
+    if (isLoading) {
+      return { haveAny: false, havePassword: false, loading: true };
+    }
     const rows = Array.isArray(data)
       ? (data as Array<{ provider: string }>)
       : [];
@@ -87,8 +95,9 @@ function useVaultProviders(userId: string | null) {
     return {
       haveAny: providers.size > 0,
       havePassword: providers.has("password"),
+      loading: false,
     };
-  }, [data]);
+  }, [data, isLoading]);
 }
 
 type RoomPlain = {
@@ -127,10 +136,18 @@ type RoomKeyRow = {
   kdf_salt_b64: string;
 };
 
+const USER_VAULT_KEYS_STREAM = {
+  name: "user_vault_keys",
+  parameters: undefined,
+} as const;
+const ROOM_KEYS_STREAM = { name: "room_keys", parameters: undefined } as const;
+const ROOM_DETAILS_STREAM = { name: "room_details", parameters: undefined } as const;
+
 export default function App() {
   const db = usePowerSync();
   const [dbReady, setDbReady] = useState(false);
   const { userId, authEvent } = useSupabaseUser();
+  const status = useStatus();
   const providers = useVaultProviders(userId);
 
   if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
@@ -147,7 +164,6 @@ export default function App() {
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [pendingRoomSelection, setPendingRoomSelection] =
     useState<string | null>(null);
-  const [mirrorsStarted, setMirrorsStarted] = useState(false);
   const [passwordResetPending, setPasswordResetPending] = useState(false);
   const [guestSupported, setGuestSupported] = useState(() =>
     isAnonymousSupported(),
@@ -212,10 +228,8 @@ export default function App() {
         },
       },
     );
-    setMirrorsStarted(true);
     return () => {
       stop?.();
-      setMirrorsStarted(false);
     };
   }, [db, userId, dataCrypto, roomProviders]);
 
@@ -238,7 +252,12 @@ export default function App() {
   const { data: roomKeyRows } = useQuery(
     "SELECT * FROM chat_room_keys WHERE user_id = ?",
     [userId ?? ""],
-    { throttleMs: 250 },
+    {
+      throttleMs: 250,
+      streams: userId
+        ? [{ ...ROOM_KEYS_STREAM, waitForStream: true }]
+        : undefined,
+    },
   );
 
   useEffect(() => {
@@ -305,7 +324,12 @@ export default function App() {
     ? `SELECT * FROM ${ROOMS_MIRROR_TABLE} ORDER BY updated_at DESC`
     : "SELECT NULL as id WHERE 1 = 0";
 
-  const roomsQuery = useQuery(roomsSql, [], { throttleMs: 200 });
+  const roomsQuery = useQuery(roomsSql, [], {
+    throttleMs: 200,
+    streams: dbReady
+      ? [{ ...ROOM_DETAILS_STREAM, waitForStream: true }]
+      : undefined,
+  });
 
   const roomsData = useMemo(() => {
     if (roomsQuery?.error) {
@@ -368,10 +392,31 @@ export default function App() {
     }
   }, [rooms, activeRoomId, roomKeys, pendingRoomSelection]);
 
+  const roomMessagesStreamDescriptor = useMemo(
+    () =>
+      activeRoomId
+        ? { name: "room_messages", parameters: { room_id: activeRoomId } }
+        : null,
+    [activeRoomId],
+  );
+
+  const roomMembersStreamDescriptor = useMemo(
+    () =>
+      activeRoomId
+        ? { name: "room_members", parameters: { room_id: activeRoomId } }
+        : null,
+    [activeRoomId],
+  );
+
   const { data: messagesData } = useQuery(
     `SELECT * FROM ${MESSAGES_MIRROR_TABLE} WHERE room_id = ? ORDER BY sent_at ASC`,
     [activeRoomId ?? ""],
-    { throttleMs: 120 },
+    {
+      throttleMs: 120,
+      streams: roomMessagesStreamDescriptor
+        ? [{ ...roomMessagesStreamDescriptor, waitForStream: true }]
+        : undefined,
+    },
   );
   const remoteMessages: MessagePlain[] = useMemo(() => {
     if (!Array.isArray(messagesData)) return [];
@@ -407,7 +452,12 @@ export default function App() {
   const { data: membershipData } = useQuery(
     "SELECT * FROM chat_room_members WHERE room_id = ? ORDER BY joined_at ASC",
     [activeRoomId ?? ""],
-    { throttleMs: 300 },
+    {
+      throttleMs: 300,
+      streams: roomMembersStreamDescriptor
+        ? [{ ...roomMembersStreamDescriptor, waitForStream: true }]
+        : undefined,
+    },
   );
   const members: MemberPlain[] = useMemo(() => {
     if (!Array.isArray(membershipData)) return [];
@@ -419,6 +469,16 @@ export default function App() {
       joinedAt: String(row.joined_at ?? new Date().toISOString()),
     }));
   }, [membershipData]);
+
+  const roomsStreamStatus = status.forStream(ROOM_DETAILS_STREAM);
+  const activeRoomStreamStatus = roomMessagesStreamDescriptor
+    ? status.forStream(roomMessagesStreamDescriptor)
+    : null;
+  const mirrorsStarted = dataCrypto
+    ? (roomsStreamStatus?.subscription?.hasSynced ?? false) &&
+      (!roomMessagesStreamDescriptor ||
+        (activeRoomStreamStatus?.subscription?.hasSynced ?? false))
+    : false;
 
   const canSendToActiveRoom = activeRoomId ? roomKeys.has(activeRoomId) : false;
 
@@ -715,6 +775,13 @@ export default function App() {
   }
 
   if (!dataCrypto) {
+    if (providers.loading) {
+      return (
+        <div className="min-h-screen bg-slate-950/5 flex items-center justify-center">
+          <div className="text-sm text-slate-500">Preparing encrypted vault…</div>
+        </div>
+      );
+    }
     return (
       <VaultScreen
         hasVault={providers.haveAny}

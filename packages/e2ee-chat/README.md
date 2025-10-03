@@ -51,7 +51,7 @@ Run the frontend at the printed URL once the dev server starts.
    -- You can scope this to specific tables if needed, but the publication name must stay "powersync".
    CREATE PUBLICATION powersync FOR ALL TABLES;
    ```
-4. Copy `infra/powersync/sync_rules.yaml` into your PowerSync dashboard so the client can sync the encrypted tables.  
+4. Copy `infra/powersync/sync_streams.yaml` into your PowerSync dashboard so the client can sync the encrypted tables using sync streams.  
 5. Populate `frontend/.env.local` with the Supabase URL and anon key from the dashboard (see Quickstart above).
 
 If you ever need a fresh database during development, run `pnpm --filter @app/chat-e2ee migrate:reset` to drop and reapply the schema locally. To repair discrepancies between your migrations and the remote database, use the Supabase CLI’s `migration repair` command as documented by Supabase.
@@ -91,14 +91,14 @@ If you ever need a fresh database during development, run `pnpm --filter @app/ch
 - **Anonymous sessions** – Enable the Supabase Anonymous provider and the launch screen shows a "Continue as guest" button. Guest users still unlock a local vault, but their messages display the Supabase user UUID unless you add a dedicated `sender_id` column to your schema.
 - **Mirrors** – `startChatMirrors` decrypts encrypted rows per-room, writing plaintext representations into `chat_rooms_plain` and `chat_messages_plain` so the UI can query unencrypted data locally.
 
-## Schema & sync rules
+## Schema & sync streams
 
 - Supabase schema lives at `packages/e2ee-chat/infra/schema.sql`.
-- PowerSync sync rules live at `packages/e2ee-chat/infra/powersync/sync_rules.yaml` and replicate:
-  - The personal vault tables (`chat_e2ee_keys`, `chat_identity_*`).
-  - Per-room buckets: encrypted rooms, messages, membership, and the wrapped room keys for the current user.
+- PowerSync sync streams live at `packages/e2ee-chat/infra/powersync/sync_streams.yaml` and configure: 
+  - Auto-subscribed streams for personal vault tables (`chat_e2ee_keys`, `chat_identity_*`), room metadata, membership records, and wrapped keys.
+  - Parameterized streams (`room_members`, `room_messages`) that the client subscribes to on demand when a room becomes active.
 
-Run the provided Supabase scripts (see `package.json` scripts) to push the schema to your project. Use the PowerSync dashboard to paste the sync rules.
+Run the provided Supabase scripts (see `package.json` scripts) to push the schema to your project. Use the PowerSync dashboard to paste the sync streams configuration.
 
 After editing `infra/schema.sql`, generate and push a fresh migration:
 

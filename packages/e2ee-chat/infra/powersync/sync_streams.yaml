@@ -1,0 +1,77 @@
+# PowerSync Sync Streams for the E2EE Chat demo.
+#
+# The configuration combines auto-subscribed streams for user-specific metadata
+# with parameterized streams that are activated on demand by the client when a
+# room is opened. This keeps sensitive encrypted payloads scoped to rooms the
+# user is actively viewing while still syncing key material needed for cryptography.
+
+streams:
+  user_vault_keys:
+    query: |
+      SELECT *
+      FROM public.chat_e2ee_keys
+      WHERE user_id = auth.user_id()
+    auto_subscribe: true
+
+  identity_private_keys:
+    query: |
+      SELECT *
+      FROM public.chat_identity_private_keys
+      WHERE user_id = auth.user_id()
+    auto_subscribe: true
+
+  identity_public_keys:
+    query: |
+      SELECT *
+      FROM public.chat_identity_public_keys
+    auto_subscribe: true
+
+  membership_records:
+    query: |
+      SELECT *
+      FROM public.chat_room_members
+      WHERE user_id = auth.user_id()
+    auto_subscribe: true
+
+  room_details:
+    query: |
+      SELECT *
+      FROM public.chat_rooms
+      WHERE id IN (
+        SELECT room_id
+        FROM public.chat_room_members
+        WHERE user_id = auth.user_id()
+      )
+    auto_subscribe: true
+
+  room_keys:
+    query: |
+      SELECT *
+      FROM public.chat_room_keys
+      WHERE user_id = auth.user_id()
+    auto_subscribe: true
+
+  room_members:
+    query: |
+      SELECT *
+      FROM public.chat_room_members
+      WHERE room_id = subscription.parameter('room_id')
+        AND room_id IN (
+          SELECT room_id
+          FROM public.chat_room_members
+          WHERE user_id = auth.user_id()
+        )
+
+  room_messages:
+    query: |
+      SELECT *
+      FROM public.chat_messages
+      WHERE bucket_id = subscription.parameter('room_id')
+        AND bucket_id IN (
+          SELECT room_id
+          FROM public.chat_room_members
+          WHERE user_id = auth.user_id()
+        )
+
+config:
+  edition: 2

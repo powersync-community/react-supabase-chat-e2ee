@@ -22,7 +22,7 @@ importers:
         version: link:../interface
       '@powersync/web':
         specifier: ^1.26.2
-        version: 1.26.2(@journeyapps/wa-sqlite@1.3.2)(@powersync/common@1.38.1)
+        version: 1.26.2(@journeyapps/wa-sqlite@1.3.2)(@powersync/common@1.39.0)
       libsodium-wrappers:
         specifier: ^0.7.15
         version: 0.7.15
@@ -108,14 +108,14 @@ importers:
         specifier: ^1.3.1
         version: 1.3.2
       '@powersync/common':
-        specifier: ^1.38.1
-        version: 1.38.1
+        specifier: ^1.39.0
+        version: 1.39.0
       '@powersync/react':
-        specifier: ^1.7.4
-        version: 1.7.4(@powersync/common@1.38.1)(react@19.1.1)
+        specifier: ^1.8.0
+        version: 1.8.0(@powersync/common@1.39.0)(react@19.1.1)
       '@powersync/web':
-        specifier: ^1.26.2
-        version: 1.26.2(@journeyapps/wa-sqlite@1.3.2)(@powersync/common@1.38.1)
+        specifier: ^1.27.0
+        version: 1.27.0(@journeyapps/wa-sqlite@1.3.2)(@powersync/common@1.39.0)
       '@supabase/supabase-js':
         specifier: ^2.45.0
         version: 2.58.0
@@ -493,13 +493,13 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
-  '@powersync/common@1.38.1':
-    resolution: {integrity: sha512-kSPDprIHV3FnNtDrkUOvuSYlH5G0SuOK74WjaXCnxIfxuwf73pFRYdBThczABJUqZ/iYC/csnweV/sUxK+6nog==}
+  '@powersync/common@1.39.0':
+    resolution: {integrity: sha512-qGPl/LPRoopNWjduGXfN+P3PsdTMfFR9YI2TbsLA++VRMK+10To9ey3Z6yprKoVbdLmisPde9mAaTvb1ugkeyg==}
 
-  '@powersync/react@1.7.4':
-    resolution: {integrity: sha512-I9T4FQbpv2/tCnV6O5Warf4Rkitni+zgVJS1poveSHwTigiLORbhN86JZkv8+2tK3sT/eo9DplbMHoy9fIHltQ==}
+  '@powersync/react@1.8.0':
+    resolution: {integrity: sha512-Ihu1XEMb8lGMpYKAuPrN1OFWz0SJg2A7ld/1OGx5mU6Vq6W3Ow5NgMwBs9xjivPEbN5P4t1/Plpvn8bYWRtl7A==}
     peerDependencies:
-      '@powersync/common': ^1.38.1
+      '@powersync/common': ^1.39.0
       react: '*'
 
   '@powersync/web@1.26.2':
@@ -508,6 +508,13 @@ packages:
     peerDependencies:
       '@journeyapps/wa-sqlite': ^1.3.1
       '@powersync/common': ^1.38.1
+
+  '@powersync/web@1.27.0':
+    resolution: {integrity: sha512-qbfgnMlPr2xCp1Q4aWiucbg/ZQMXh46BsH9UIHz0Oh2kldsG4r++8voVEXtZsfCsUsBuXlUWmdInen6YJm4dHQ==}
+    hasBin: true
+    peerDependencies:
+      '@journeyapps/wa-sqlite': ^1.3.2
+      '@powersync/common': ^1.39.0
 
   '@rolldown/pluginutils@1.0.0-beta.34':
     resolution: {integrity: sha512-LyAREkZHP5pMom7c24meKmJCdhf2hEyvam2q0unr3or9ydwDL+DJ8chTF6Av/RFPb3rH8UFBdMzO5MxTZW97oA==}
@@ -1843,19 +1850,28 @@ snapshots:
     dependencies:
       playwright: 1.55.1
 
-  '@powersync/common@1.38.1':
+  '@powersync/common@1.39.0':
     dependencies:
       js-logger: 1.6.1
 
-  '@powersync/react@1.7.4(@powersync/common@1.38.1)(react@19.1.1)':
+  '@powersync/react@1.8.0(@powersync/common@1.39.0)(react@19.1.1)':
     dependencies:
-      '@powersync/common': 1.38.1
+      '@powersync/common': 1.39.0
       react: 19.1.1
 
-  '@powersync/web@1.26.2(@journeyapps/wa-sqlite@1.3.2)(@powersync/common@1.38.1)':
+  '@powersync/web@1.26.2(@journeyapps/wa-sqlite@1.3.2)(@powersync/common@1.39.0)':
     dependencies:
       '@journeyapps/wa-sqlite': 1.3.2
-      '@powersync/common': 1.38.1
+      '@powersync/common': 1.39.0
+      async-mutex: 0.4.1
+      bson: 6.10.4
+      comlink: 4.4.2
+      commander: 12.1.0
+
+  '@powersync/web@1.27.0(@journeyapps/wa-sqlite@1.3.2)(@powersync/common@1.39.0)':
+    dependencies:
+      '@journeyapps/wa-sqlite': 1.3.2
+      '@powersync/common': 1.39.0
       async-mutex: 0.4.1
       bson: 6.10.4
       comlink: 4.4.2
